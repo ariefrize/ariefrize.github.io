@@ -71,6 +71,30 @@
             letter-spacing: -1.5px;
             line-height: 1.1;
             animation: gradientShift 6s ease infinite;
+            overflow: hidden;
+            border-right: 3px solid #a78bfa;
+            white-space: nowrap;
+            animation: typing 3s steps(30) 0.5s 1 normal both, 
+                       gradientShift 6s ease 3.5s infinite,
+                       blinkCursor 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            from {
+                width: 0;
+            }
+            to {
+                width: 100%;
+            }
+        }
+
+        @keyframes blinkCursor {
+            from, to {
+                border-color: transparent;
+            }
+            50% {
+                border-color: #a78bfa;
+            }
         }
 
         @keyframes gradientShift {
@@ -79,6 +103,14 @@
             }
             50% {
                 background-position: 100% center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                white-space: normal;
+                border-right: none;
+                animation: gradientShift 6s ease infinite;
             }
         }
 
