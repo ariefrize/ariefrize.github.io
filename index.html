@@ -78,8 +78,9 @@
             white-space: nowrap;
             display: inline-block;
             animation: typing 3s steps(30) 0.5s 1 normal both, 
-                       gradientShift 6s ease 3.5s infinite,
-                       blinkCursor 0.75s step-end infinite;
+                       blinkCursor 0.75s step-end 0s 4,
+                       removeCursor 0s 3.5s forwards,
+                       gradientShift 6s ease 3.5s infinite;
         }
 
         @keyframes typing {
@@ -97,6 +98,12 @@
             }
             50% {
                 border-color: #a78bfa;
+            }
+        }
+
+        @keyframes removeCursor {
+            to {
+                border-right-color: transparent;
             }
         }
 
