@@ -22,11 +22,11 @@
 
         .container {
             max-width: 1200px;
-            margin: 0 auto;
+            margin: 40px auto;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border: 1px solid #334155;
+            border: 2px solid #7c3aed;
             border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 25px rgba(124, 58, 237, 0.3);
             overflow: hidden;
         }
 
@@ -34,18 +34,21 @@
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             border-bottom: 1px solid #334155;
             color: white;
-            padding: 30px;
+            padding: 40px 30px 30px;
             text-align: center;
         }
 
         .header h1 {
-            font-size: 28px;
+            font-size: 32px;
+            font-weight: 700;
             margin-bottom: 10px;
+            letter-spacing: -0.5px;
         }
 
         .header p {
             opacity: 0.9;
             font-size: 14px;
+            color: #a1a1aa;
         }
 
         .content {
@@ -123,12 +126,13 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #475569 0%, #334155 100%);
-            border: 1px solid #475569;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            border: 1px solid #4f46e5;
             color: white;
             padding: 25px;
             border-radius: 10px;
             text-align: center;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
         }
 
         .stat-card.green {
@@ -270,6 +274,22 @@
             color: #6ee7b7;
             border: 1px solid #059669;
         }
+
+        .back-link {
+            text-align: center;
+            margin-top: 24px;
+        }
+
+        .back-link a {
+            color: #a1a1aa;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .back-link a:hover {
+            color: #7c3aed;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -284,13 +304,14 @@
             <!-- Upload Section -->
             <div id="uploadSection">
                 <div class="upload-section" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📤</div>
                     <div class="upload-text">Upload Zoho Books Invoice Export</div>
                     <div class="upload-subtext">Click to browse or drag and drop your .xlsx file here</div>
                 </div>
                 <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFile(event)">
                 
                 <div class="alert alert-info">
-                    <strong>Instructions:</strong>
+                    <strong>ℹ️ Instructions:</strong>
                     <ul style="margin: 10px 0 0 20px;">
                         <li>Export invoice data from Zoho Books (all columns)</li>
                         <li>Make sure the sheet is named "Invoice"</li>
@@ -308,7 +329,7 @@
             <!-- Results Section -->
             <div class="results-section" id="results">
                 <div class="alert alert-success">
-                    <strong>Processing Complete!</strong> File analyzed successfully.
+                    <strong>✅ Processing Complete!</strong> File analyzed successfully.
                 </div>
 
                 <!-- Statistics -->
@@ -333,12 +354,12 @@
 
                 <!-- Table -->
                 <div style="text-align: center;">
-                    <button class="download-btn" onclick="downloadExcel()">Download Excel Summary</button>
-                    <button class="reset-btn" onclick="reset()">Process Another File</button>
+                    <button class="download-btn" onclick="downloadExcel()">📥 Download Excel Summary</button>
+                    <button class="reset-btn" onclick="reset()">🔄 Process Another File</button>
                 </div>
                 
-                <div style="text-align: center; margin-top: 24px;">
-                    <a href="index.html" style="color: #a1a1aa; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#7c3aed'" onmouseout="this.style.color='#a1a1aa'">← Back to Home</a>
+                <div class="back-link">
+                    <a href="index.html">← Back to Home</a>
                 </div>
 
                 <div class="table-container">
