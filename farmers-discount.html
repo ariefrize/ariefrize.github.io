@@ -471,11 +471,19 @@
                 </div>
 
                 <div class="table-container">
-                    <div style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
+                    <div style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                         <label style="color: #a1a1aa; font-size: 14px; font-weight: 500;">Filter by Sales Person:</label>
-                        <select id="salespersonFilter" onchange="filterBySalesperson()" style="padding: 8px 16px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #fafafa; font-size: 14px; min-width: 200px;">
+                        <select id="salespersonFilter" onchange="applyFilters()" style="padding: 8px 16px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #fafafa; font-size: 14px; min-width: 200px;">
                             <option value="all">All Sales Persons</option>
                         </select>
+                        
+                        <label style="color: #a1a1aa; font-size: 14px; font-weight: 500; margin-left: 16px;">Y2S1 Eligibility:</label>
+                        <select id="eligibilityFilter" onchange="applyFilters()" style="padding: 8px 16px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #fafafa; font-size: 14px; min-width: 150px;">
+                            <option value="all">All</option>
+                            <option value="pass">PASS Only</option>
+                            <option value="fail">FAIL Only</option>
+                        </select>
+                        
                         <span id="filterStats" style="color: #71717a; font-size: 13px; margin-left: auto;"></span>
                     </div>
                     <table id="resultsTable">
@@ -483,7 +491,7 @@
                             <tr>
                                 <th>Customer Name</th>
                                 <th>Sales Person</th>
-                                <th>Y2S1 Status</th>
+                                <th>Y2S1 Eligibility</th>
                                 <th>Y2S2 Total Sales</th>
                                 <th>Y2S2 Invoices</th>
                                 <th>Discount (3%)</th>
@@ -821,14 +829,27 @@
             document.getElementById('results').style.display = 'block';
         }
 
-        function filterBySalesperson() {
+        function applyFilters() {
             const selectedSP = document.getElementById('salespersonFilter').value;
-            const filtered = selectedSP === 'all' 
-                ? summaryData 
-                : summaryData.filter(d => d.salesperson === selectedSP);
+            const selectedEligibility = document.getElementById('eligibilityFilter').value;
             
-            const filterStats = document.getElementById('filterStats');
+            let filtered = summaryData;
+            
+            // Filter by salesperson
             if (selectedSP !== 'all') {
+                filtered = filtered.filter(d => d.salesperson === selectedSP);
+            }
+            
+            // Filter by Y2S1 eligibility
+            if (selectedEligibility === 'pass') {
+                filtered = filtered.filter(d => d.y2s1Pass === true);
+            } else if (selectedEligibility === 'fail') {
+                filtered = filtered.filter(d => d.y2s1Pass === false);
+            }
+            
+            // Update filter stats
+            const filterStats = document.getElementById('filterStats');
+            if (selectedSP !== 'all' || selectedEligibility !== 'all') {
                 const eligibleCount = filtered.filter(d => d.discountAmount > 0).length;
                 const totalDiscountFiltered = filtered.reduce((sum, d) => sum + d.discountAmount, 0);
                 filterStats.textContent = `Showing ${filtered.length} customers | ${eligibleCount} eligible | Discount: ${formatRupiah(totalDiscountFiltered)}`;
@@ -936,7 +957,7 @@
                 'Sales Person': row.salesperson,
                 'Y2S1 Zero Balance': row.y2s1ZeroBalance ? 'PASS' : 'FAIL',
                 'Y2S1 Early Payment': row.y2s1EarlyPayment ? 'PASS' : 'FAIL',
-                'Y2S1 Status': row.y2s1Pass ? 'PASS' : 'FAIL',
+                'Y2S1 Eligibility': row.y2s1Pass ? 'PASS' : 'FAIL',
                 'Y2S2 Total Sales': row.y2s2TotalSales,
                 'Y2S2 Invoice Count': row.y2s2InvoiceCount,
                 'Threshold Met (≥2.5M)': row.thresholdMet ? 'YES' : 'NO',
@@ -952,7 +973,7 @@
                             'Customer Name': row.customerName,
                             'Sales Person': row.salesperson,
                             'Invoice Number': inv,
-                            'Y2S1 Status': row.y2s1Pass ? 'PASS' : 'FAIL',
+                            'Y2S1 Eligibility': row.y2s1Pass ? 'PASS' : 'FAIL',
                             'Discount Eligible': row.discountAmount > 0 ? 'YES' : 'NO'
                         });
                     });
