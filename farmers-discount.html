@@ -307,18 +307,18 @@
                     <div class="upload-section" id="uploadAreaY2S1" onclick="document.getElementById('fileInputY2S1').click()">
                         <div class="upload-icon">📤</div>
                         <div class="upload-text">Upload Y2S1 Invoices</div>
-                        <div class="upload-subtext">April 1 - September 30, 2025</div>
+                        <div class="upload-subtext">April 1 - September 30, 2025 (Multiple files OK)</div>
                         <div class="upload-status" id="statusY2S1" style="margin-top: 10px; font-size: 13px; color: #71717a;"></div>
                     </div>
                     <div class="upload-section" id="uploadAreaY2S2" onclick="document.getElementById('fileInputY2S2').click()">
                         <div class="upload-icon">📤</div>
                         <div class="upload-text">Upload Y2S2 Invoices</div>
-                        <div class="upload-subtext">October 1 - March 31, 2026</div>
+                        <div class="upload-subtext">October 1 - March 31, 2026 (Multiple files OK)</div>
                         <div class="upload-status" id="statusY2S2" style="margin-top: 10px; font-size: 13px; color: #71717a;"></div>
                     </div>
                 </div>
-                <input type="file" id="fileInputY2S1" accept=".xlsx,.xls" onchange="handleFileY2S1(event)">
-                <input type="file" id="fileInputY2S2" accept=".xlsx,.xls" onchange="handleFileY2S2(event)">
+                <input type="file" id="fileInputY2S1" accept=".xlsx,.xls" multiple onchange="handleFileY2S1(event)">
+                <input type="file" id="fileInputY2S2" accept=".xlsx,.xls" multiple onchange="handleFileY2S2(event)">
                 
                 <button id="processBtn" class="download-btn" onclick="processFiles()" style="width: 100%; margin-bottom: 20px; display: none;">🔍 Process Files</button>
                 
@@ -409,9 +409,14 @@
         const Y2S2_THRESHOLD = 2500000;
 
         function handleFileY2S1(e) {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('statusY2S1').innerHTML = '⏳ Loading...';
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+            
+            document.getElementById('statusY2S1').innerHTML = '⏳ Loading ' + files.length + ' file(s)...';
+            let allData = [];
+            let filesProcessed = 0;
+            
+            files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     try {
@@ -419,23 +424,34 @@
                         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                         const sheetName = workbook.SheetNames.find(s => s.toLowerCase() === 'invoice') || workbook.SheetNames[0];
                         const worksheet = workbook.Sheets[sheetName];
-                        y2s1Data = XLSX.utils.sheet_to_json(worksheet);
-                        document.getElementById('statusY2S1').innerHTML = '✅ Loaded (' + y2s1Data.length + ' rows)';
-                        document.getElementById('statusY2S1').style.color = '#10b981';
-                        checkBothFilesLoaded();
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        allData = allData.concat(jsonData);
+                        
+                        filesProcessed++;
+                        if (filesProcessed === files.length) {
+                            y2s1Data = allData;
+                            document.getElementById('statusY2S1').innerHTML = '✅ Loaded ' + files.length + ' file(s) (' + allData.length + ' rows)';
+                            document.getElementById('statusY2S1').style.color = '#10b981';
+                            checkBothFilesLoaded();
+                        }
                     } catch (error) {
                         document.getElementById('statusY2S1').innerHTML = '❌ Error: ' + error.message;
                         document.getElementById('statusY2S1').style.color = '#ef4444';
                     }
                 };
                 reader.readAsArrayBuffer(file);
-            }
+            });
         }
 
         function handleFileY2S2(e) {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('statusY2S2').innerHTML = '⏳ Loading...';
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+            
+            document.getElementById('statusY2S2').innerHTML = '⏳ Loading ' + files.length + ' file(s)...';
+            let allData = [];
+            let filesProcessed = 0;
+            
+            files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     try {
@@ -443,17 +459,23 @@
                         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                         const sheetName = workbook.SheetNames.find(s => s.toLowerCase() === 'invoice') || workbook.SheetNames[0];
                         const worksheet = workbook.Sheets[sheetName];
-                        y2s2Data = XLSX.utils.sheet_to_json(worksheet);
-                        document.getElementById('statusY2S2').innerHTML = '✅ Loaded (' + y2s2Data.length + ' rows)';
-                        document.getElementById('statusY2S2').style.color = '#10b981';
-                        checkBothFilesLoaded();
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        allData = allData.concat(jsonData);
+                        
+                        filesProcessed++;
+                        if (filesProcessed === files.length) {
+                            y2s2Data = allData;
+                            document.getElementById('statusY2S2').innerHTML = '✅ Loaded ' + files.length + ' file(s) (' + allData.length + ' rows)';
+                            document.getElementById('statusY2S2').style.color = '#10b981';
+                            checkBothFilesLoaded();
+                        }
                     } catch (error) {
                         document.getElementById('statusY2S2').innerHTML = '❌ Error: ' + error.message;
                         document.getElementById('statusY2S2').style.color = '#ef4444';
                     }
                 };
                 reader.readAsArrayBuffer(file);
-            }
+            });
         }
 
         function checkBothFilesLoaded() {
