@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Y2S1 Farmers Discount Eligibility Calculator</title>
+    <title>Farmers Discount Calculator (Y2S1 + Y2S2)</title>
     <style>
         * {
             margin: 0;
@@ -296,26 +296,38 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Y2S1 Farmers Discount Eligibility Calculator</h1>
-            <p>Y2S1 Period: April 1 - September 30, 2025</p>
+            <h1>Farmers Discount Calculator</h1>
+            <p>Y2S1: April 1 - September 30, 2025 | Y2S2: October 1 - March 31, 2026</p>
         </div>
 
         <div class="content">
             <!-- Upload Section -->
             <div id="uploadSection">
-                <div class="upload-section" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-                    <div class="upload-icon">📤</div>
-                    <div class="upload-text">Upload Zoho Books Invoice Export</div>
-                    <div class="upload-subtext">Click to browse or drag and drop your .xlsx file here</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div class="upload-section" id="uploadAreaY2S1" onclick="document.getElementById('fileInputY2S1').click()">
+                        <div class="upload-icon">📤</div>
+                        <div class="upload-text">Upload Y2S1 Invoices</div>
+                        <div class="upload-subtext">April 1 - September 30, 2025</div>
+                        <div class="upload-status" id="statusY2S1" style="margin-top: 10px; font-size: 13px; color: #71717a;"></div>
+                    </div>
+                    <div class="upload-section" id="uploadAreaY2S2" onclick="document.getElementById('fileInputY2S2').click()">
+                        <div class="upload-icon">📤</div>
+                        <div class="upload-text">Upload Y2S2 Invoices</div>
+                        <div class="upload-subtext">October 1 - March 31, 2026</div>
+                        <div class="upload-status" id="statusY2S2" style="margin-top: 10px; font-size: 13px; color: #71717a;"></div>
+                    </div>
                 </div>
-                <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFile(event)">
+                <input type="file" id="fileInputY2S1" accept=".xlsx,.xls" onchange="handleFileY2S1(event)">
+                <input type="file" id="fileInputY2S2" accept=".xlsx,.xls" onchange="handleFileY2S2(event)">
+                
+                <button id="processBtn" class="download-btn" onclick="processFiles()" style="width: 100%; margin-bottom: 20px; display: none;">🔍 Process Files</button>
                 
                 <div class="alert alert-info">
                     <strong>ℹ️ Instructions:</strong>
                     <ul style="margin: 10px 0 0 20px;">
-                        <li>Export invoice data from Zoho Books (all columns)</li>
+                        <li>Upload both Y2S1 and Y2S2 invoice exports from Zoho Books</li>
                         <li>Make sure the sheet is named "Invoice"</li>
-                        <li>File should contain: Invoice Date, Customer Name, Item Price, Quantity, Balance, etc.</li>
+                        <li>Files should contain: Invoice Date, Customer Name, Item Price, Quantity, Balance, etc.</li>
                     </ul>
                 </div>
             </div>
@@ -339,16 +351,16 @@
                         <div class="stat-label">Total Customers</div>
                     </div>
                     <div class="stat-card green">
-                        <div class="stat-number" id="passCount">0</div>
-                        <div class="stat-label">Early Payment PASS</div>
+                        <div class="stat-number" id="y2s1PassCount">0</div>
+                        <div class="stat-label">Y2S1 PASS</div>
                     </div>
-                    <div class="stat-card red">
-                        <div class="stat-number" id="failBalance">0</div>
-                        <div class="stat-label">FAIL - Has Balance</div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);">
+                        <div class="stat-number" id="y2s2EligibleCount">0</div>
+                        <div class="stat-label">Y2S2 Discount Eligible</div>
                     </div>
-                    <div class="stat-card yellow">
-                        <div class="stat-number" id="failLate">0</div>
-                        <div class="stat-label">FAIL - Late Payment</div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <div class="stat-number" id="totalDiscountAmount">Rp 0</div>
+                        <div class="stat-label">Total Discount Amount</div>
                     </div>
                 </div>
 
@@ -368,10 +380,14 @@
                             <tr>
                                 <th>Customer Name</th>
                                 <th>Sales Person</th>
-                                <th>Total Sales (Rp)</th>
-                                <th>Total Balance (Rp)</th>
-                                <th>Zero Balance</th>
-                                <th>Early Payment</th>
+                                <th>Y2S1 Zero Balance</th>
+                                <th>Y2S1 Early Payment</th>
+                                <th>Y2S1 Status</th>
+                                <th>Y2S2 Total Sales</th>
+                                <th>Y2S2 Invoices</th>
+                                <th>Threshold Met</th>
+                                <th>Discount (3%)</th>
+                                <th>After Discount</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody"></tbody>
@@ -382,9 +398,344 @@
     </div>
 
     <script>
+        let y2s1Data = null;
+        let y2s2Data = null;
         let summaryData = [];
-        const START_DATE = new Date('2025-04-01');
-        const END_DATE = new Date('2025-09-30');
+        
+        const Y2S1_START = new Date('2025-04-01');
+        const Y2S1_END = new Date('2025-09-30');
+        const Y2S2_START = new Date('2025-10-01');
+        const Y2S2_END = new Date('2026-03-31');
+        const Y2S2_THRESHOLD = 2500000;
+
+        function handleFileY2S1(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('statusY2S1').innerHTML = '⏳ Loading...';
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        const sheetName = workbook.SheetNames.find(s => s.toLowerCase() === 'invoice') || workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        y2s1Data = XLSX.utils.sheet_to_json(worksheet);
+                        document.getElementById('statusY2S1').innerHTML = '✅ Loaded (' + y2s1Data.length + ' rows)';
+                        document.getElementById('statusY2S1').style.color = '#10b981';
+                        checkBothFilesLoaded();
+                    } catch (error) {
+                        document.getElementById('statusY2S1').innerHTML = '❌ Error: ' + error.message;
+                        document.getElementById('statusY2S1').style.color = '#ef4444';
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function handleFileY2S2(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('statusY2S2').innerHTML = '⏳ Loading...';
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        const sheetName = workbook.SheetNames.find(s => s.toLowerCase() === 'invoice') || workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        y2s2Data = XLSX.utils.sheet_to_json(worksheet);
+                        document.getElementById('statusY2S2').innerHTML = '✅ Loaded (' + y2s2Data.length + ' rows)';
+                        document.getElementById('statusY2S2').style.color = '#10b981';
+                        checkBothFilesLoaded();
+                    } catch (error) {
+                        document.getElementById('statusY2S2').innerHTML = '❌ Error: ' + error.message;
+                        document.getElementById('statusY2S2').style.color = '#ef4444';
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function checkBothFilesLoaded() {
+            if (y2s1Data && y2s2Data) {
+                document.getElementById('processBtn').style.display = 'block';
+            }
+        }
+
+        function processFiles() {
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('processing').style.display = 'block';
+            
+            setTimeout(() => {
+                try {
+                    calculateCombinedEligibility();
+                } catch (error) {
+                    alert('Error processing files: ' + error.message);
+                    reset();
+                }
+            }, 100);
+        }
+
+        function calculateCombinedEligibility() {
+            const y2s1Groups = processY2S1Data(y2s1Data);
+            const y2s2Groups = processY2S2Data(y2s2Data);
+            summaryData = combineResults(y2s1Groups, y2s2Groups);
+            displayResults();
+        }
+
+        function processY2S1Data(data) {
+            const groups = {};
+            
+            data.forEach(row => {
+                const invoiceDate = parseDate(row['Invoice Date']);
+                if (!invoiceDate || invoiceDate < Y2S1_START || invoiceDate > Y2S1_END) return;
+                
+                const customer = row['Customer Name'] || 'Unknown';
+                const salesperson = row['Sales person'] || 'Unknown';
+                const key = `${customer}|${salesperson}`;
+                
+                if (!groups[key]) {
+                    groups[key] = {
+                        customerName: customer,
+                        salesperson: salesperson,
+                        invoices: {},
+                        salesItems: []
+                    };
+                }
+                
+                const invoiceNum = row['Invoice Number'];
+                const itemName = (row['Item Name'] || '').toLowerCase();
+                const status = row['Invoice Status'] || '';
+                const itemPrice = parseFloat(row['Item Price']) || 0;
+                const quantity = parseFloat(row['Quantity']) || 0;
+                const balance = parseFloat(row['Balance']) || 0;
+                const lastPayment = parseDate(row['Last Payment Date']);
+                
+                if (!itemName.includes('advisory')) {
+                    if (!groups[key].invoices[invoiceNum]) {
+                        groups[key].invoices[invoiceNum] = {
+                            balance: balance,
+                            invoiceDate: invoiceDate,
+                            lastPayment: lastPayment
+                        };
+                    } else {
+                        groups[key].invoices[invoiceNum].balance = Math.max(groups[key].invoices[invoiceNum].balance, balance);
+                    }
+                }
+                
+                if (!itemName.includes('advisory') && 
+                    status !== 'Draft' && status !== 'Pending' && status !== 'Void') {
+                    groups[key].salesItems.push(itemPrice * quantity);
+                }
+            });
+            
+            const results = {};
+            Object.entries(groups).forEach(([key, group]) => {
+                const totalSales = group.salesItems.reduce((sum, val) => sum + val, 0);
+                const totalBalance = Object.values(group.invoices).reduce((sum, inv) => sum + inv.balance, 0);
+                
+                let zeroBalance = false;
+                let earlyPayment = false;
+                
+                if (totalSales > 0) {
+                    zeroBalance = totalBalance === 0;
+                    
+                    if (zeroBalance) {
+                        const invoices = Object.values(group.invoices);
+                        earlyPayment = invoices.every(inv => {
+                            if (!inv.lastPayment) return false;
+                            const threshold = new Date(inv.invoiceDate);
+                            threshold.setDate(threshold.getDate() + 110);
+                            return inv.lastPayment <= threshold;
+                        });
+                    }
+                }
+                
+                results[key] = {
+                    customerName: group.customerName,
+                    salesperson: group.salesperson,
+                    zeroBalance: zeroBalance,
+                    earlyPayment: earlyPayment,
+                    y2s1Pass: zeroBalance && earlyPayment
+                };
+            });
+            
+            return results;
+        }
+
+        function processY2S2Data(data) {
+            const groups = {};
+            
+            data.forEach(row => {
+                const invoiceDate = parseDate(row['Invoice Date']);
+                if (!invoiceDate || invoiceDate < Y2S2_START || invoiceDate > Y2S2_END) return;
+                
+                const customer = row['Customer Name'] || 'Unknown';
+                const salesperson = row['Sales person'] || 'Unknown';
+                const key = `${customer}|${salesperson}`;
+                
+                if (!groups[key]) {
+                    groups[key] = {
+                        invoices: [],
+                        totalAmount: 0
+                    };
+                }
+                
+                const invoiceNum = row['Invoice Number'];
+                const itemName = (row['Item Name'] || '').toLowerCase();
+                const status = row['Invoice Status'] || '';
+                const itemPrice = parseFloat(row['Item Price']) || 0;
+                const quantity = parseFloat(row['Quantity']) || 0;
+                
+                if (!itemName.includes('advisory') && 
+                    status !== 'Draft' && 
+                    status !== 'Pending' && 
+                    status !== 'Void' &&
+                    status !== 'Approved') {
+                    const amount = itemPrice * quantity;
+                    groups[key].totalAmount += amount;
+                    
+                    if (!groups[key].invoices.includes(invoiceNum)) {
+                        groups[key].invoices.push(invoiceNum);
+                    }
+                }
+            });
+            
+            return groups;
+        }
+
+        function combineResults(y2s1Groups, y2s2Groups) {
+            const allKeys = new Set([...Object.keys(y2s1Groups), ...Object.keys(y2s2Groups)]);
+            const combined = [];
+            
+            allKeys.forEach(key => {
+                const y2s1 = y2s1Groups[key] || { customerName: '', salesperson: '', zeroBalance: false, earlyPayment: false, y2s1Pass: false };
+                const y2s2 = y2s2Groups[key] || { invoices: [], totalAmount: 0 };
+                
+                const thresholdMet = y2s2.totalAmount >= Y2S2_THRESHOLD;
+                const discountEligible = y2s1.y2s1Pass && thresholdMet;
+                const discountAmount = discountEligible ? y2s2.totalAmount * 0.03 : 0;
+                const afterDiscount = y2s2.totalAmount - discountAmount;
+                
+                combined.push({
+                    customerName: y2s1.customerName || key.split('|')[0],
+                    salesperson: y2s1.salesperson || key.split('|')[1],
+                    y2s1ZeroBalance: y2s1.zeroBalance,
+                    y2s1EarlyPayment: y2s1.earlyPayment,
+                    y2s1Pass: y2s1.y2s1Pass,
+                    y2s2TotalSales: y2s2.totalAmount,
+                    y2s2InvoiceCount: y2s2.invoices.length,
+                    y2s2Invoices: y2s2.invoices,
+                    thresholdMet: thresholdMet,
+                    discountAmount: discountAmount,
+                    afterDiscount: afterDiscount
+                });
+            });
+            
+            combined.sort((a, b) => a.customerName.localeCompare(b.customerName));
+            return combined;
+        }
+
+        function parseDate(dateVal) {
+            if (!dateVal) return null;
+            if (dateVal instanceof Date) return dateVal;
+            const parsed = new Date(dateVal);
+            return isNaN(parsed) ? null : parsed;
+        }
+
+        function displayResults() {
+            const totalCustomers = summaryData.length;
+            const y2s1Pass = summaryData.filter(d => d.y2s1Pass).length;
+            const y2s2Eligible = summaryData.filter(d => d.discountAmount > 0).length;
+            const totalDiscount = summaryData.reduce((sum, d) => sum + d.discountAmount, 0);
+            
+            document.getElementById('totalCustomers').textContent = totalCustomers.toLocaleString();
+            document.getElementById('y2s1PassCount').textContent = y2s1Pass.toLocaleString();
+            document.getElementById('y2s2EligibleCount').textContent = y2s2Eligible.toLocaleString();
+            document.getElementById('totalDiscountAmount').textContent = formatRupiah(totalDiscount);
+            
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            summaryData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.customerName}</td>
+                    <td>${row.salesperson}</td>
+                    <td><span class="badge ${row.y2s1ZeroBalance ? 'badge-pass' : 'badge-fail'}">${row.y2s1ZeroBalance ? 'PASS' : 'FAIL'}</span></td>
+                    <td><span class="badge ${row.y2s1EarlyPayment ? 'badge-pass' : 'badge-fail'}">${row.y2s1EarlyPayment ? 'PASS' : 'FAIL'}</span></td>
+                    <td><span class="badge ${row.y2s1Pass ? 'badge-pass' : 'badge-fail'}">${row.y2s1Pass ? 'PASS' : 'FAIL'}</span></td>
+                    <td>${formatRupiah(row.y2s2TotalSales)}</td>
+                    <td>${row.y2s2InvoiceCount}</td>
+                    <td><span class="badge ${row.thresholdMet ? 'badge-pass' : 'badge-fail'}">${row.thresholdMet ? 'YES' : 'NO'}</span></td>
+                    <td style="color: #10b981; font-weight: 600;">${formatRupiah(row.discountAmount)}</td>
+                    <td style="font-weight: 600;">${formatRupiah(row.afterDiscount)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            document.getElementById('processing').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function formatRupiah(num) {
+            return 'Rp ' + num.toLocaleString('id-ID', { maximumFractionDigits: 0 });
+        }
+
+        function downloadExcel() {
+            const summarySheet = XLSX.utils.json_to_sheet(summaryData.map(row => ({
+                'Customer Name': row.customerName,
+                'Sales Person': row.salesperson,
+                'Y2S1 Zero Balance': row.y2s1ZeroBalance ? 'PASS' : 'FAIL',
+                'Y2S1 Early Payment': row.y2s1EarlyPayment ? 'PASS' : 'FAIL',
+                'Y2S1 Status': row.y2s1Pass ? 'PASS' : 'FAIL',
+                'Y2S2 Total Sales': row.y2s2TotalSales,
+                'Y2S2 Invoice Count': row.y2s2InvoiceCount,
+                'Threshold Met (≥2.5M)': row.thresholdMet ? 'YES' : 'NO',
+                'Discount Amount (3%)': row.discountAmount,
+                'After Discount': row.afterDiscount
+            })));
+            
+            const detailData = [];
+            summaryData.forEach(row => {
+                if (row.y2s2Invoices.length > 0) {
+                    row.y2s2Invoices.forEach(inv => {
+                        detailData.push({
+                            'Customer Name': row.customerName,
+                            'Sales Person': row.salesperson,
+                            'Invoice Number': inv,
+                            'Y2S1 Status': row.y2s1Pass ? 'PASS' : 'FAIL',
+                            'Discount Eligible': row.discountAmount > 0 ? 'YES' : 'NO'
+                        });
+                    });
+                }
+            });
+            const detailSheet = XLSX.utils.json_to_sheet(detailData);
+            
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+            XLSX.utils.book_append_sheet(wb, detailSheet, 'Y2S2 Invoice Detail');
+            
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            XLSX.writeFile(wb, `Farmers_Discount_Y2S1_Y2S2_${timestamp}.xlsx`);
+        }
+
+        function reset() {
+            y2s1Data = null;
+            y2s2Data = null;
+            summaryData = [];
+            document.getElementById('fileInputY2S1').value = '';
+            document.getElementById('fileInputY2S2').value = '';
+            document.getElementById('statusY2S1').innerHTML = '';
+            document.getElementById('statusY2S2').innerHTML = '';
+            document.getElementById('processBtn').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('processing').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
 
         // Drag and drop handlers
         const uploadArea = document.getElementById('uploadArea');
