@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Data Uploader & Chart Generator</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .chart-container { width: 45%; float: left; margin: 10px; border: 1px solid #ccc; padding: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+        .chart-container h3 { text-align: center; }
+        .clearfix::after { content: ""; clear: both; display: table; }
+    </style>
+</head>
+<body>
+
+    <h1>📊 Excel Chart Uploader</h1>
+    <input type="file" id="excel-upload" accept=".xlsx, .xls">
+
+    <hr>
+
+    <div id="chart-area" class="clearfix">
+        </div>
+
+    <p id="status-message"></p>
+
+    <script>
+        document.getElementById('excel-upload').addEventListener('change', handleFileUpload);
+        const chartArea = document.getElementById('chart-area');
+        const statusMessage = document.getElementById('status-message');
+
+        /**
+         * Cleans the chart area and updates the status message.
+         */
+        function cleanup() {
+            chartArea.innerHTML = ''; // Clear previous charts
+            statusMessage.textContent = 'Awaiting file upload...';
+        }
+        cleanup(); // Initial cleanup
+
+        /**
+         * Handles the file upload event.
+         * @param {Event} event - The change event from the file input.
+         */
+        function handleFileUpload(event) {
+            cleanup();
+            statusMessage.textContent = 'Processing file...';
+
+            const file = event.target.files[0];
+            if (!file) {
+                statusMessage.textContent = 'No file selected.';
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    // Read the Excel workbook
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Get the name of the first sheet
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // Convert sheet data to an array of arrays (data rows)
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    if (json.length > 1 && json[0].length >= 2) {
+                        statusMessage.textContent = 'Data loaded successfully. Generating charts...';
+                        createCharts(json);
+                    } else {
+                        statusMessage.textContent = 'Error: Sheet must have at least one header row and two columns of data.';
+                    }
+
+                } catch (error) {
+                    statusMessage.textContent = 'Error processing file: ' + error.message;
+                    console.error(error);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        /**
+         * Creates and renders charts based on the processed Excel data.
+         * Assumes: Column 1 is labels (X-axis), Column 2 is values (Y-axis).
+         * @param {Array<Array>} data - The data rows from the Excel sheet.
+         */
+        function createCharts(data) {
+            // The first row is typically the header/labels
+            const header = data[0];
+            
+            // Remaining rows are the actual data (skip the header)
+            const chartDataRows = data.slice(1);
+
+            // Extract labels (from the first column, index 0)
+            const labels = chartDataRows.map(row => row[0]);
+            
+            // Extract values (from the second column, index 1)
+            const values = chartDataRows.map(row => row[1]);
+
+            if (labels.length === 0 || values.length === 0) {
+                 statusMessage.textContent = 'Error: No valid data rows found after header.';
+                 return;
+            }
+
+            // --- 1. Create BAR CHART ---
+            renderChart('Bar Chart', 'bar', header[0], header[1], labels, values, 'rgba(75, 192, 192, 0.6)');
+
+            // --- 2. Create LINE CHART ---
+            renderChart('Line Chart', 'line', header[0], header[1], labels, values, 'rgba(153, 102, 255, 1)');
+            
+            statusMessage.textContent = 'Charts generated successfully!';
+        }
+
+        /**
+         * Renders a specific chart type on the page.
+         */
+        function renderChart(title, type, labelX, labelY, labels, values, color) {
+            // Create a container div and canvas for the chart
+            const container = document.createElement('div');
+            container.className = 'chart-container';
+            container.innerHTML = `<h3>${title} - (${labelX} vs ${labelY})</h3><canvas id="chart-${type}"></canvas>`;
+            chartArea.appendChild(container);
+
+            const ctx = document.getElementById(`chart-${type}`).getContext('2d');
+            
+            new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: labelY,
+                        data: values,
+                        backgroundColor: type === 'bar' ? color : 'rgba(0, 0, 0, 0)', // No fill for line chart
+                        borderColor: color,
+                        borderWidth: 1,
+                        tension: 0.1 // For line chart smoothing
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+
+</body>
+</html>
