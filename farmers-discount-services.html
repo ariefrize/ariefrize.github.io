@@ -860,17 +860,27 @@
             Object.entries(groups).forEach(([key, group]) => {
                 const totalOutstanding = group.advisoryBalance + group.advanceOutstanding;
                 const zeroOutstanding = Math.abs(totalOutstanding) < 1; // Allow small rounding errors
-                
-                let earlyPayment = false;
-                if (zeroOutstanding) {
-                    const invoices = Object.values(group.invoices);
-                    earlyPayment = invoices.length > 0 && invoices.every(inv => {
+                // Early payment for advisory invoices
+                let advisoryEarlyPayment = false;
+                const advisoryInvoices = Object.values(group.invoices);
+                advisoryEarlyPayment = advisoryInvoices.length > 0 && advisoryInvoices.every(inv => {
+                    if (!inv.lastPayment) return false;
+                    const threshold = new Date(inv.invoiceDate);
+                    threshold.setDate(threshold.getDate() + 110);
+                    return inv.lastPayment <= threshold;
+                });
+                // Early payment for advances (if any advances exist)
+                let advanceEarlyPayment = false;
+                if (group.advanceOutstanding !== 0) {
+                    advanceEarlyPayment = advisoryInvoices.length > 0 && advisoryInvoices.every(inv => {
                         if (!inv.lastPayment) return false;
                         const threshold = new Date(inv.invoiceDate);
                         threshold.setDate(threshold.getDate() + 110);
                         return inv.lastPayment <= threshold;
                     });
                 }
+                // Flexible pass: if either advisory or advance passes early payment
+                let y2s1Pass = (zeroOutstanding && (advisoryEarlyPayment || advanceEarlyPayment));
                 
                 results[key] = {
                     customerName: group.customerName,
@@ -879,8 +889,8 @@
                     advanceOutstanding: group.advanceOutstanding,
                     totalOutstanding: totalOutstanding,
                     zeroOutstanding: zeroOutstanding,
-                    earlyPayment: earlyPayment,
-                    y2s1Pass: zeroOutstanding && earlyPayment
+                    earlyPayment: advisoryEarlyPayment || advanceEarlyPayment,
+                    y2s1Pass: y2s1Pass
                 };
             });
             
