@@ -371,7 +371,7 @@
         .invoice-detail-table th,
         .invoice-detail-table td {
             padding: 12px;
-            text-align: left;
+            text-align: center;
             border-bottom: 1px solid #27272a;
         }
 
@@ -397,6 +397,12 @@
 
         .invoice-link:hover {
             color: #3b82f6;
+        }
+
+        .y2s1-detail-table th, .y2s1-detail-table td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #27272a;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -545,6 +551,17 @@
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Y2S1 Detail Modal -->
+    <div id="y2s1DetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="y2s1ModalTitle">Y2S1 Details</h2>
+                <button class="close-btn" onclick="closeY2S1Modal()">&times;</button>
+            </div>
+            <div id="y2s1ModalBody"></div>
         </div>
     </div>
 
@@ -1073,9 +1090,13 @@
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
-            
             data.forEach(row => {
-                const tr = document.createElement('tr');
+                // Prepare Y2S1 advisory and advance details
+                const advisoryDetails = row.y2s1AdvisoryDetails || [];
+                const advanceDetails = row.y2s1AdvanceDetails || [];
+                const advisoryLink = `<span class="invoice-link" onclick='showY2S1Detail("advisory", ${JSON.stringify(advisoryDetails)}, "${row.customerName}")'>${formatRupiah(row.advisoryBalance)}</span>`;
+                const advanceLink = `<span class="invoice-link" onclick='showY2S1Detail("advance", ${JSON.stringify(advanceDetails)}, "${row.customerName}")'>${formatRupiah(row.advanceOutstanding)}</span>`;
+                
                 const invoiceLink = row.y2s2InvoiceCount > 0 
                     ? `<span class="invoice-link" onclick='showInvoiceDetail(${JSON.stringify(row.y2s2InvoiceDetails || [])}, "${row.customerName}")'>${row.y2s2InvoiceCount}</span>`
                     : row.y2s2InvoiceCount;
@@ -1084,8 +1105,8 @@
                     <td>${row.customerName}</td>
                     <td>${row.salesperson}</td>
                     <td><span class="badge ${row.y2s1Pass ? 'badge-pass' : 'badge-fail'}">${row.y2s1Pass ? 'PASS' : 'FAIL'}</span></td>
-                    <td>${formatRupiah(row.advisoryBalance)}</td>
-                    <td>${formatRupiah(row.advanceOutstanding)}</td>
+                    <td>${advisoryLink}</td>
+                    <td>${advanceLink}</td>
                     <td style="font-weight: 600; color: ${Math.abs(row.totalOutstanding) < 1 ? '#10b981' : '#ef4444'};">${formatRupiah(row.totalOutstanding)}</td>
                     <td>${formatRupiah(row.y2s2TotalSales)}</td>
                     <td>${invoiceLink}</td>
@@ -1157,17 +1178,50 @@
             document.getElementById('invoiceModal').style.display = 'none';
         }
 
-        function formatDate(date) {
-            if (!date) return '-';
-            const d = new Date(date);
-            return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        function showY2S1Detail(type, details, customerName) {
+            const modal = document.getElementById('y2s1DetailModal');
+            const modalTitle = document.getElementById('y2s1ModalTitle');
+            const modalBody = document.getElementById('y2s1ModalBody');
+            modalTitle.textContent = `Y2S1 ${type === 'advisory' ? 'Advisory' : 'Advance'} Details - ${customerName}`;
+            let tableHTML = `
+                <table class="y2s1-detail-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice Number</th>
+                            <th>Amount</th>
+                            <th>Repayment</th>
+                            <th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            details.forEach(inv => {
+                tableHTML += `
+                    <tr>
+                        <td>${inv.invoiceNumber}</td>
+                        <td>${formatRupiah(inv.amount)}</td>
+                        <td>${formatRupiah(inv.repayment)}</td>
+                        <td>${formatRupiah(inv.amount - inv.repayment)}</td>
+                    </tr>
+                `;
+            });
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            modalBody.innerHTML = tableHTML;
+            modal.style.display = 'flex';
+        }
+
+        function closeY2S1Modal() {
+            document.getElementById('y2s1DetailModal').style.display = 'none';
         }
 
         window.onclick = function(event) {
             const modal = document.getElementById('invoiceModal');
-            if (event.target === modal) {
-                closeModal();
-            }
+            const y2s1Modal = document.getElementById('y2s1DetailModal');
+            if (event.target === modal) closeModal();
+            if (event.target === y2s1Modal) closeY2S1Modal();
         }
 
         function downloadExcel() {
