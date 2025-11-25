@@ -705,13 +705,24 @@
             }
         }
 
+        // Instead of splitting GL by period, process all GL data together
+        // When loading files, combine glY2S1Data and glY2S2Data into one array before calling processGLData
         function processFiles() {
             document.getElementById('uploadSection').style.display = 'none';
             document.getElementById('processing').style.display = 'block';
             
             setTimeout(() => {
                 try {
-                    calculateCombinedEligibility();
+                    // Combine all GL data into one array
+                    const allGLData = (glY2S1Data || []).concat(glY2S2Data || []);
+                    const glProcessed = processGLData(allGLData);
+                    // Process Y2S1 - Calculate eligibility including advisory and advances
+                    const y2s1Groups = processY2S1Data(y2s1Data, glProcessed);
+                    // Process Y2S2 - Calculate discount eligibility
+                    const y2s2Groups = processY2S2Data(y2s2Data, glProcessed);
+                    // Combine results
+                    summaryData = combineResults(y2s1Groups, y2s2Groups);
+                    displayResults();
                 } catch (error) {
                     alert('Error processing files: ' + error.message);
                     reset();
