@@ -1139,24 +1139,27 @@
                     </thead>
                     <tbody>
             `;
-            invoiceDetails.forEach(inv => {
-                // If advance amount is available, add it to advisory
-                let fullAmount = inv.amount;
-                if (inv.advanceAmount) {
-                    fullAmount += inv.advanceAmount;
-                }
-                total += fullAmount;
-                const discount = fullAmount * 0.03;
-                totalDiscount += discount;
-                tableHTML += `
-                    <tr>
-                        <td>${inv.invoiceNumber}</td>
-                        <td>${formatDate(inv.invoiceDate)}</td>
-                        <td>${formatRupiah(fullAmount)}</td>
-                        <td>${formatRupiah(discount)}</td>
-                    </tr>
-                `;
-            });
+            if (invoiceDetails && invoiceDetails.length > 0) {
+                invoiceDetails.forEach(inv => {
+                    let fullAmount = inv.amount;
+                    if (inv.advanceAmount) {
+                        fullAmount += inv.advanceAmount;
+                    }
+                    total += fullAmount;
+                    const discount = fullAmount * 0.03;
+                    totalDiscount += discount;
+                    tableHTML += `
+                        <tr>
+                            <td>${inv.invoiceNumber || '-'}</td>
+                            <td>${formatDate(inv.invoiceDate)}</td>
+                            <td>${formatRupiah(fullAmount)}</td>
+                            <td>${formatRupiah(discount)}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tableHTML += `<tr><td colspan="4" style="text-align:center; color:#a1a1aa;">No data available</td></tr>`;
+            }
             tableHTML += `
                     </tbody>
                     <tfoot>
@@ -1194,16 +1197,20 @@
                     </thead>
                     <tbody>
             `;
-            details.forEach(inv => {
-                tableHTML += `
-                    <tr>
-                        <td>${inv.invoiceNumber}</td>
-                        <td>${formatRupiah(inv.amount)}</td>
-                        <td>${formatRupiah(inv.repayment)}</td>
-                        <td>${formatRupiah(inv.amount - inv.repayment)}</td>
-                    </tr>
-                `;
-            });
+            if (details && details.length > 0) {
+                details.forEach(inv => {
+                    tableHTML += `
+                        <tr>
+                            <td>${inv.invoiceNumber || '-'}</td>
+                            <td>${formatRupiah(inv.amount || 0)}</td>
+                            <td>${formatRupiah(inv.repayment || 0)}</td>
+                            <td>${formatRupiah((inv.amount || 0) - (inv.repayment || 0))}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tableHTML += `<tr><td colspan="4" style="text-align:center; color:#a1a1aa;">No data available</td></tr>`;
+            }
             tableHTML += `
                     </tbody>
                 </table>
