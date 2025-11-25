@@ -1092,26 +1092,33 @@
             const modalBody = document.getElementById('modalBody');
             modalTitle.textContent = `Y2S2 Invoices - ${customerName}`;
             let total = 0;
+            let totalDiscount = 0;
             let tableHTML = `
                 <table class="invoice-detail-table">
                     <thead>
                         <tr>
                             <th>Invoice Number</th>
                             <th>Invoice Date</th>
-                            <th>Amount</th>
+                            <th>Amount (Advisory + Advance)</th>
                             <th>Discount (3%)</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
             invoiceDetails.forEach(inv => {
-                total += inv.amount;
-                const discount = inv.amount * 0.03;
+                // If advance amount is available, add it to advisory
+                let fullAmount = inv.amount;
+                if (inv.advanceAmount) {
+                    fullAmount += inv.advanceAmount;
+                }
+                total += fullAmount;
+                const discount = fullAmount * 0.03;
+                totalDiscount += discount;
                 tableHTML += `
                     <tr>
                         <td>${inv.invoiceNumber}</td>
                         <td>${formatDate(inv.invoiceDate)}</td>
-                        <td>${formatRupiah(inv.amount)}</td>
+                        <td>${formatRupiah(fullAmount)}</td>
                         <td>${formatRupiah(discount)}</td>
                     </tr>
                 `;
@@ -1121,8 +1128,8 @@
                     <tfoot>
                         <tr style="border-top: 2px solid #7c3aed;">
                             <td colspan="2" style="font-weight: 700; color: #fafafa;">Total</td>
-                            <td style="font-weight: 700, color: #fafafa;">${formatRupiah(total)}</td>
-                            <td style="font-weight: 700; color: #fafafa;">${formatRupiah(total * 0.03)}</td>
+                            <td style="font-weight: 700; color: #fafafa;">${formatRupiah(total)}</td>
+                            <td style="font-weight: 700; color: #fafafa;">${formatRupiah(totalDiscount)}</td>
                         </tr>
                     </tfoot>
                 </table>
