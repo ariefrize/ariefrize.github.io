@@ -810,23 +810,25 @@
                 // Skip harvester-related invoices
                 if (harvesterInvoices.has(invoiceNum)) return;
                 
+                const itemName = (row['Item Name'] || '').toLowerCase();
+                const status = row['Invoice Status'] || '';
+                const balance = parseFloat(row['Balance']) || 0;
+                const lastPayment = parseDate(row['Last Payment Date']);
+                
+                // Only consider services (advisory) items
+                if (!itemName.includes('advisory') || status === 'Draft' || status === 'Pending' || status === 'Void' || status === 'Approved') {
+                    return;
+                }
+                
                 if (!groups[key]) {
                     groups[key] = {
                         customerName: customer,
                         salesperson: salesperson,
                         invoices: {},
                         advisoryBalance: 0,
-                        advanceOutstanding: 0,
-                        salesItems: []
+                        advanceOutstanding: 0
                     };
                 }
-                
-                const itemName = (row['Item Name'] || '').toLowerCase();
-                const status = row['Invoice Status'] || '';
-                const itemPrice = parseFloat(row['Item Price']) || 0;
-                const quantity = parseFloat(row['Quantity']) || 0;
-                const balance = parseFloat(row['Balance']) || 0;
-                const lastPayment = parseDate(row['Last Payment Date']);
                 
                 // Track invoices for early payment check
                 if (!groups[key].invoices[invoiceNum]) {
@@ -838,17 +840,8 @@
                 }
                 groups[key].invoices[invoiceNum].balance = Math.max(groups[key].invoices[invoiceNum].balance, balance);
                 
-                // Calculate advisory balance
-                if (itemName.includes('advisory') && 
-                    status !== 'Draft' && status !== 'Pending' && status !== 'Void' && status !== 'Approved') {
-                    groups[key].advisoryBalance += balance;
-                }
-                
-                // Track sales for non-advisory items
-                if (!itemName.includes('advisory') && 
-                    status !== 'Draft' && status !== 'Pending' && status !== 'Void') {
-                    groups[key].salesItems.push(itemPrice * quantity);
-                }
+                // Calculate advisory balance (services only)
+                groups[key].advisoryBalance += balance;
             });
             
             // Calculate advance outstanding from GL
