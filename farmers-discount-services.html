@@ -986,25 +986,43 @@
         function combineResults(y2s1Groups, y2s2Groups) {
             const allKeys = new Set([...Object.keys(y2s1Groups), ...Object.keys(y2s2Groups)]);
             const combined = [];
-            
             allKeys.forEach(key => {
-                const y2s1 = y2s1Groups[key] || { 
-                    customerName: '', 
-                    salesperson: '', 
+                const y2s1 = y2s1Groups[key] || {
+                    customerName: '',
+                    salesperson: '',
                     advisoryBalance: 0,
                     advanceOutstanding: 0,
                     totalOutstanding: 0,
-                    zeroOutstanding: false, 
-                    earlyPayment: false, 
-                    y2s1Pass: false 
+                    zeroOutstanding: false,
+                    earlyPayment: false,
+                    y2s1Pass: false,
+                    advisoryDetails: [],
+                    advanceDetails: []
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
-                
-                const thresholdMet = y2s2.totalAmount >= Y2S2_THRESHOLD;
-                const discountEligible = y2s1.y2s1Pass && thresholdMet;
-                const discountAmount = discountEligible ? y2s2.totalAmount * 0.03 : 0;
-                const afterDiscount = y2s2.totalAmount - discountAmount;
-                
+                // Build Y2S1 advisory details
+                const advisoryDetails = [];
+                if (y2s1.invoices) {
+                    Object.entries(y2s1.invoices).forEach(([invNum, inv]) => {
+                        advisoryDetails.push({
+                            invoiceNumber: invNum,
+                            amount: inv.balance || 0,
+                            repayment: 0 // You can add repayment logic if available
+                        });
+                    });
+                }
+                // Build Y2S1 advance details
+                const advanceDetails = [];
+                if (y2s1.advanceInvoices) {
+                    Object.entries(y2s1.advanceInvoices).forEach(([invNum, adv]) => {
+                        advanceDetails.push({
+                            invoiceNumber: invNum,
+                            amount: adv.amount || 0,
+                            repayment: adv.repayment || 0
+                        });
+                    });
+                }
+                // Y2S2 invoice details already present
                 combined.push({
                     customerName: y2s1.customerName || key.split('|')[0],
                     salesperson: y2s1.salesperson || key.split('|')[1],
@@ -1016,12 +1034,13 @@
                     y2s2InvoiceCount: y2s2.invoices.length,
                     y2s2Invoices: y2s2.invoices,
                     y2s2InvoiceDetails: y2s2.invoiceDetails,
-                    thresholdMet: thresholdMet,
-                    discountAmount: discountAmount,
-                    afterDiscount: afterDiscount
+                    y2s1AdvisoryDetails: advisoryDetails,
+                    y2s1AdvanceDetails: advanceDetails,
+                    thresholdMet: y2s2.totalAmount >= 2500000,
+                    discountAmount: y2s1.y2s1Pass && y2s2.totalAmount >= 2500000 ? y2s2.totalAmount * 0.03 : 0,
+                    afterDiscount: y2s2.totalAmount - (y2s1.y2s1Pass && y2s2.totalAmount >= 2500000 ? y2s2.totalAmount * 0.03 : 0)
                 });
             });
-            
             combined.sort((a, b) => a.customerName.localeCompare(b.customerName));
             return combined;
         }
@@ -1207,8 +1226,8 @@
                     <tfoot>
                         <tr style="border-top: 2px solid #7c3aed;">
                             <td colspan="2" style="font-weight: 700; color: #fafafa;">Total</td>
-                            <td style="font-weight: 700; color: #fafafa;">${formatRupiah(total)}</td>
-                            <td style="font-weight: 700; color: #fafafa;">${formatRupiah(totalDiscount)}</td>
+                            <td style="font-weight: 700, color: #fafafa;">${formatRupiah(total)}</td>
+                            <td style="font-weight: 700, color: #fafafa;">${formatRupiah(totalDiscount)}</td>
                         </tr>
                     </tfoot>
                 </table>
