@@ -755,6 +755,7 @@
             const debitIdx = headers.indexOf('debit');
             const creditIdx = headers.indexOf('credit');
             const invoiceMap = {};
+            const harvesterInvoices = new Set();
             // Process GL transactions
             for (let i = headerRow + 1; i < data.length; i++) {
                 const row = data[i];
@@ -767,6 +768,11 @@
                 const debit = parseFloat(row[debitIdx]) || 0;
                 const credit = parseFloat(row[creditIdx]) || 0;
                 const date = parseDate(row[dateIdx]);
+                // Track harvester invoices to exclude later
+                if (accountName && accountName.toLowerCase().includes('harvester')) {
+                    harvesterInvoices.add(invoiceNum);
+                    continue;
+                }
                 // Only Leveling and Other Mechanization
                 if (accountName && (accountName.toLowerCase().includes('leveling') || accountName.toLowerCase().includes('mechanization'))) {
                     if (!invoiceMap[invoiceNum]) {
@@ -778,12 +784,12 @@
                     if (credit > 0) invoiceMap[invoiceNum].repaymentDates.push(date);
                 }
             }
-            return { invoiceMap };
+            return { invoiceMap, harvesterInvoices };
         }
 
         function processY2S1Data(data, glProcessed) {
             const groups = {};
-            const { invoiceMap } = glProcessed;
+            const { invoiceMap, harvesterInvoices } = glProcessed;
             
             data.forEach(row => {
                 const invoiceDate = parseDate(row['Invoice Date']);
