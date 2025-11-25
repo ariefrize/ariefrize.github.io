@@ -1091,16 +1091,15 @@
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             data.forEach(row => {
+                const tr = document.createElement('tr');
                 // Prepare Y2S1 advisory and advance details
                 const advisoryDetails = row.y2s1AdvisoryDetails || [];
                 const advanceDetails = row.y2s1AdvanceDetails || [];
                 const advisoryLink = `<span class="invoice-link" onclick='showY2S1Detail("advisory", ${JSON.stringify(advisoryDetails)}, "${row.customerName}")'>${formatRupiah(row.advisoryBalance)}</span>`;
                 const advanceLink = `<span class="invoice-link" onclick='showY2S1Detail("advance", ${JSON.stringify(advanceDetails)}, "${row.customerName}")'>${formatRupiah(row.advanceOutstanding)}</span>`;
-                
                 const invoiceLink = row.y2s2InvoiceCount > 0 
                     ? `<span class="invoice-link" onclick='showInvoiceDetail(${JSON.stringify(row.y2s2InvoiceDetails || [])}, "${row.customerName}")'>${row.y2s2InvoiceCount}</span>`
                     : row.y2s2InvoiceCount;
-                
                 tr.innerHTML = `
                     <td>${row.customerName}</td>
                     <td>${row.salesperson}</td>
