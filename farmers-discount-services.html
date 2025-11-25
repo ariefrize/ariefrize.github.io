@@ -739,8 +739,9 @@
         function processGLData(data) {
             // Find header row
             let headerRow = -1;
-            for (let i = 0; i < Math.min(5, data.length); i++) {
-                if (data[i].includes('date') || data[i].includes('account_name')) {
+            for (let i = 0; i < Math.min(10, data.length); i++) {
+                const row = data[i].map(x => (x || '').toString().toLowerCase());
+                if (row.includes('date') || row.includes('transaction_date')) {
                     headerRow = i;
                     break;
                 }
@@ -748,15 +749,14 @@
             if (headerRow === -1) {
                 throw new Error('Could not find header row in General Ledger file');
             }
-            const headers = data[headerRow];
-            const dateIdx = headers.indexOf('date');
+            const headers = data[headerRow].map(x => (x || '').toString().toLowerCase());
+            const dateIdx = headers.indexOf('date') !== -1 ? headers.indexOf('date') : headers.indexOf('transaction_date');
             const accountNameIdx = headers.indexOf('account_name');
             const descriptionIdx = headers.indexOf('description');
             const debitIdx = headers.indexOf('debit');
             const creditIdx = headers.indexOf('credit');
             const invoiceMap = {};
             const harvesterInvoices = new Set();
-            // Process GL transactions
             for (let i = headerRow + 1; i < data.length; i++) {
                 const row = data[i];
                 if (!row || row.length === 0) continue;
@@ -768,12 +768,10 @@
                 const debit = parseFloat(row[debitIdx]) || 0;
                 const credit = parseFloat(row[creditIdx]) || 0;
                 const date = parseDate(row[dateIdx]);
-                // Track harvester invoices to exclude later
                 if (accountName && accountName.toLowerCase().includes('harvester')) {
                     harvesterInvoices.add(invoiceNum);
                     continue;
                 }
-                // Only Leveling and Other Mechanization
                 if (accountName && (accountName.toLowerCase().includes('leveling') || accountName.toLowerCase().includes('mechanization'))) {
                     if (!invoiceMap[invoiceNum]) {
                         invoiceMap[invoiceNum] = { debit: 0, credit: 0, advanceDate: null, repaymentDates: [] };
