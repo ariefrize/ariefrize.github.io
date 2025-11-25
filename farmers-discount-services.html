@@ -1000,7 +1000,7 @@
                     invoices: {}
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
-                // Build Y2S1 advisory details (only advisory invoices)
+                // Build Y2S1 advisory details (robust extraction)
                 const advisoryDetails = [];
                 Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
                     let repayment = 0;
@@ -1008,45 +1008,48 @@
                     if (invoiceMap && invoiceMap[invNum]) {
                         repayment = invoiceMap[invNum].credit || 0;
                     }
-                    advisoryDetails.push({
-                        invoiceNumber: invNum,
-                        amount: advisoryAmount,
-                        repayment: repayment
-                    });
+                    // Only push if advisoryAmount > 0
+                    if (advisoryAmount > 0) {
+                        advisoryDetails.push({
+                            invoiceNumber: invNum,
+                            amount: advisoryAmount,
+                            repayment: repayment
+                        });
+                    }
                 });
-                // Build Y2S1 advance details (all GL invoices for this customer/salesperson)
+                // Build Y2S1 advance details (only for this customer)
                 const advanceDetails = [];
                 if (invoiceMap) {
-                    Object.entries(invoiceMap).forEach(([invNum, gl]) => {
-                        // Only include if advance (debit) exists and this invoice belongs to this customer/salesperson
-                        // Try to match by presence in y2s1.invoices or y2s2.invoices, or just include all advances
-                        if (gl.debit > 0) {
+                    Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
+                        if (invoiceMap[invNum] && invoiceMap[invNum].debit > 0) {
                             advanceDetails.push({
                                 invoiceNumber: invNum,
-                                amount: gl.debit || 0,
-                                repayment: gl.credit || 0
+                                amount: invoiceMap[invNum].debit || 0,
+                                repayment: invoiceMap[invNum].credit || 0
                             });
                         }
                     });
                 }
+                // Y2S2 sales: always use sum of invoiceDetails amounts
+                const y2s2TotalSales = (y2s2.invoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
                 // Debug logging to verify details
                 console.log('[DEBUG] Customer:', y2s1.customerName, 'Advisory Details:', advisoryDetails, 'Advance Details:', advanceDetails);
                 combined.push({
                     customerName: y2s1.customerName || key.split('|')[0],
                     salesperson: y2s1.salesperson || key.split('|')[1],
-                    advisoryBalance: y2s1.advisoryBalance,
-                    advanceOutstanding: y2s1.advanceOutstanding,
-                    totalOutstanding: y2s1.totalOutstanding,
+                    advisoryBalance: advisoryDetails.reduce((sum, d) => sum + (d.amount || 0), 0),
+                    advanceOutstanding: advanceDetails.reduce((sum, d) => sum + ((d.amount || 0) - (d.repayment || 0)), 0),
+                    totalOutstanding: advisoryDetails.reduce((sum, d) => sum + (d.amount || 0), 0) + advanceDetails.reduce((sum, d) => sum + ((d.amount || 0) - (d.repayment || 0)), 0),
                     y2s1Pass: y2s1.y2s1Pass,
-                    y2s2TotalSales: y2s2.totalAmount,
+                    y2s2TotalSales: y2s2TotalSales,
                     y2s2InvoiceCount: y2s2.invoices.length,
                     y2s2Invoices: y2s2.invoices,
                     y2s2InvoiceDetails: y2s2.invoiceDetails,
                     y2s1AdvisoryDetails: advisoryDetails,
                     y2s1AdvanceDetails: advanceDetails,
-                    thresholdMet: y2s2.totalAmount >= 2500000,
-                    discountAmount: y2s1.y2s1Pass && y2s2.totalAmount >= 2500000 ? y2s2.totalAmount * 0.03 : 0,
-                    afterDiscount: y2s2.totalAmount - (y2s1.y2s1Pass && y2s2.totalAmount >= 2500000 ? y2s2.totalAmount * 0.03 : 0)
+                    thresholdMet: y2s2TotalSales >= 2500000,
+                    discountAmount: y2s1.y2s1Pass && y2s2TotalSales >= 2500000 ? y2s2TotalSales * 0.03 : 0,
+                    afterDiscount: y2s2TotalSales - (y2s1.y2s1Pass && y2s2TotalSales >= 2500000 ? y2s2TotalSales * 0.03 : 0)
                 });
             });
             combined.sort((a, b) => a.customerName.localeCompare(b.customerName));
