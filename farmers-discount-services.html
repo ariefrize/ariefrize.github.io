@@ -893,36 +893,31 @@
 
         function processY2S2Data(data) {
             const groups = {};
-            
             data.forEach(row => {
                 const invoiceDate = parseDate(row['Invoice Date']);
                 if (!invoiceDate || invoiceDate < Y2S2_START || invoiceDate > Y2S2_END) return;
-                
                 const customer = row['Customer Name'] || 'Unknown';
                 const salesperson = row['Sales person'] || 'Unknown';
                 const key = `${customer}|${salesperson}`;
-                
                 if (!groups[key]) {
                     groups[key] = {
                         invoiceMap: {},
                         totalAmount: 0
                     };
                 }
-                
                 const invoiceNum = (row['Invoice Number'] || '').trim();
                 const itemName = (row['Item Name'] || '').toLowerCase();
                 const status = row['Invoice Status'] || '';
                 const itemPrice = parseFloat(row['Item Price']) || 0;
                 const quantity = parseFloat(row['Quantity']) || 0;
-                
-                if (!itemName.includes('advisory') && 
+                // Only include advisory/service items for services calculator
+                if (itemName.includes('advisory') && 
                     status !== 'Draft' && 
                     status !== 'Pending' && 
                     status !== 'Void' &&
                     status !== 'Approved') {
                     const amount = itemPrice * quantity;
                     groups[key].totalAmount += amount;
-                    
                     if (!groups[key].invoiceMap[invoiceNum]) {
                         groups[key].invoiceMap[invoiceNum] = {
                             invoiceNumber: invoiceNum,
@@ -933,7 +928,6 @@
                     groups[key].invoiceMap[invoiceNum].amount += amount;
                 }
             });
-            
             const results = {};
             Object.entries(groups).forEach(([key, group]) => {
                 const invoiceDetails = Object.values(group.invoiceMap);
@@ -943,7 +937,6 @@
                     totalAmount: group.totalAmount
                 };
             });
-            
             return results;
         }
 
