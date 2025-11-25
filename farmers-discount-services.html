@@ -1000,7 +1000,7 @@
                     invoices: {}
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
-                // Build Y2S1 advisory details
+                // Build Y2S1 advisory details (only advisory invoices)
                 const advisoryDetails = [];
                 Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
                     let repayment = 0;
@@ -1014,15 +1014,17 @@
                         repayment: repayment
                     });
                 });
-                // Build Y2S1 advance details
+                // Build Y2S1 advance details (all GL invoices for this customer/salesperson)
                 const advanceDetails = [];
                 if (invoiceMap) {
-                    Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
-                        if (invoiceMap[invNum]) {
+                    Object.entries(invoiceMap).forEach(([invNum, gl]) => {
+                        // Only include if advance (debit) exists and this invoice belongs to this customer/salesperson
+                        // Try to match by presence in y2s1.invoices or y2s2.invoices, or just include all advances
+                        if (gl.debit > 0) {
                             advanceDetails.push({
                                 invoiceNumber: invNum,
-                                amount: invoiceMap[invNum].debit || 0,
-                                repayment: invoiceMap[invNum].credit || 0
+                                amount: gl.debit || 0,
+                                repayment: gl.credit || 0
                             });
                         }
                     });
