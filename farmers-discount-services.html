@@ -1147,6 +1147,13 @@
             return 'Rp ' + num.toLocaleString('id-ID', { maximumFractionDigits: 0 });
         }
 
+        function formatDate(date) {
+            if (!date) return '-';
+            const d = new Date(date);
+            if (isNaN(d)) return '-';
+            return d.toLocaleDateString('id-ID');
+        }
+
         // Ensure modals are always brought to front and displayed
         function showY2S1Detail(type, details, customerName) {
             const modal = document.getElementById('y2s1DetailModal');
