@@ -369,7 +369,9 @@
         }
 
         .invoice-detail-table th,
-        .invoice-detail-table td {
+        .invoice-detail-table td,
+        .y2s1-detail-table th,
+        .y2s1-detail-table td {
             padding: 12px;
             text-align: center;
             border-bottom: 1px solid #27272a;
@@ -1151,9 +1153,7 @@
                         </tr>
                     `;
                 });
-            } else {
-                tableHTML += `<tr><td colspan="4" style="text-align:center; color:#a1a1aa;">No data available</td></tr>`;
-            }
+            } 
             tableHTML += `
                     </tbody>
                 </table>
@@ -1201,9 +1201,7 @@
                         </tr>
                     `;
                 });
-            } else {
-                tableHTML += `<tr><td colspan="4" style="text-align:center; color:#a1a1aa;">No data available</td></tr>`;
-            }
+            } 
             tableHTML += `
                     </tbody>
                     <tfoot>
