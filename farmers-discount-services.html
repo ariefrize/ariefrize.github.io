@@ -770,7 +770,7 @@
                 // Extract invoice number using regex (e.g. INV-023233)
                 const match = desc.match(/INV-\d+/);
                 if (!match || !accountName) continue;
-                const invoiceNum = match[0];
+                const invoiceNum = match[0].trim();
                 const debit = parseFloat(row[debitIdx]) || 0;
                 const credit = parseFloat(row[creditIdx]) || 0;
                 
