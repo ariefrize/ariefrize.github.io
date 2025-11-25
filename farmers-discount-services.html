@@ -745,58 +745,45 @@
                     break;
                 }
             }
-            
             if (headerRow === -1) {
                 throw new Error('Could not find header row in General Ledger file');
             }
-            
             const headers = data[headerRow];
             const dateIdx = headers.indexOf('date');
             const accountNameIdx = headers.indexOf('account_name');
             const descriptionIdx = headers.indexOf('description');
             const debitIdx = headers.indexOf('debit');
             const creditIdx = headers.indexOf('credit');
-            
             const invoiceMap = {};
-            const harvesterInvoices = new Set();
-            
             // Process GL transactions
             for (let i = headerRow + 1; i < data.length; i++) {
                 const row = data[i];
                 if (!row || row.length === 0) continue;
-                
                 const accountName = row[accountNameIdx];
                 const desc = row[descriptionIdx] || "";
-                // Extract invoice number using regex (e.g. INV-023233)
                 const match = desc.match(/INV-\d+/);
                 if (!match || !accountName) continue;
                 const invoiceNum = match[0].trim();
                 const debit = parseFloat(row[debitIdx]) || 0;
                 const credit = parseFloat(row[creditIdx]) || 0;
-                
-                // Track harvester invoices to exclude later
-                if (accountName && accountName.toLowerCase().includes('harvester')) {
-                    harvesterInvoices.add(invoiceNum);
-                    continue;
-                }
-                
-                // Include only Leveling and Other Mechanization
-                if (accountName && (accountName.toLowerCase().includes('leveling') || 
-                    accountName.toLowerCase().includes('mechanization'))) {
+                const date = parseDate(row[dateIdx]);
+                // Only Leveling and Other Mechanization
+                if (accountName && (accountName.toLowerCase().includes('leveling') || accountName.toLowerCase().includes('mechanization'))) {
                     if (!invoiceMap[invoiceNum]) {
-                        invoiceMap[invoiceNum] = { debit: 0, credit: 0 };
+                        invoiceMap[invoiceNum] = { debit: 0, credit: 0, advanceDate: null, repaymentDates: [] };
                     }
                     invoiceMap[invoiceNum].debit += debit;
                     invoiceMap[invoiceNum].credit += credit;
+                    if (debit > 0) invoiceMap[invoiceNum].advanceDate = date;
+                    if (credit > 0) invoiceMap[invoiceNum].repaymentDates.push(date);
                 }
             }
-            console.log('[DEBUG] GL Invoice Numbers:', Object.keys(invoiceMap));
-            return { invoiceMap, harvesterInvoices };
+            return { invoiceMap };
         }
 
         function processY2S1Data(data, glProcessed) {
             const groups = {};
-            const { invoiceMap, harvesterInvoices } = glProcessed;
+            const { invoiceMap } = glProcessed;
             
             data.forEach(row => {
                 const invoiceDate = parseDate(row['Invoice Date']);
@@ -901,11 +888,11 @@
             return results;
         }
 
-        function processY2S2Data(data) {
+        function processY2S2Data(data, glProcessed) {
             const groups = {};
+            const { invoiceMap } = glProcessed;
             data.forEach(row => {
                 const invoiceDate = parseDate(row['Invoice Date']);
-                if (!invoiceDate || invoiceDate < Y2S2_START || invoiceDate > Y2S2_END) return;
                 const customer = row['Customer Name'] || 'Unknown';
                 const salesperson = row['Sales person'] || 'Unknown';
                 const key = `${customer}|${salesperson}`;
@@ -920,22 +907,34 @@
                 const status = row['Invoice Status'] || '';
                 const itemPrice = parseFloat(row['Item Price']) || 0;
                 const quantity = parseFloat(row['Quantity']) || 0;
-                // Only include advisory/service items for services calculator
-                if (itemName.includes('advisory') && 
-                    status !== 'Draft' && 
-                    status !== 'Pending' && 
-                    status !== 'Void' &&
-                    status !== 'Approved') {
-                    const amount = itemPrice * quantity;
-                    groups[key].totalAmount += amount;
+                let advisoryAmount = 0;
+                let advanceAmount = 0;
+                let referenceDate = invoiceDate;
+                if (itemName.includes('advisory') && status !== 'Draft' && status !== 'Pending' && status !== 'Void' && status !== 'Approved') {
+                    advisoryAmount = itemPrice * quantity;
+                }
+                // Get advance from GL
+                if (invoiceMap[invoiceNum]) {
+                    advanceAmount = invoiceMap[invoiceNum].debit - invoiceMap[invoiceNum].credit;
+                    if (invoiceMap[invoiceNum].advanceDate) referenceDate = invoiceMap[invoiceNum].advanceDate;
+                }
+                // Only include if advisory or advance exists
+                if ((advisoryAmount > 0 || advanceAmount > 0) && status !== 'Draft' && status !== 'Pending' && status !== 'Void' && status !== 'Approved') {
+                    const fullAmount = advisoryAmount + advanceAmount;
+                    groups[key].totalAmount += fullAmount;
                     if (!groups[key].invoiceMap[invoiceNum]) {
                         groups[key].invoiceMap[invoiceNum] = {
                             invoiceNumber: invoiceNum,
-                            invoiceDate: invoiceDate,
-                            amount: 0
+                            invoiceDate: referenceDate,
+                            advisoryAmount: advisoryAmount,
+                            advanceAmount: advanceAmount,
+                            amount: fullAmount
                         };
+                    } else {
+                        groups[key].invoiceMap[invoiceNum].advisoryAmount += advisoryAmount;
+                        groups[key].invoiceMap[invoiceNum].advanceAmount += advanceAmount;
+                        groups[key].invoiceMap[invoiceNum].amount += fullAmount;
                     }
-                    groups[key].invoiceMap[invoiceNum].amount += amount;
                 }
             });
             const results = {};
