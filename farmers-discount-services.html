@@ -766,11 +766,13 @@
                 if (!row || row.length === 0) continue;
                 
                 const accountName = row[accountNameIdx];
-                const invoiceNum = row[descriptionIdx];
+                const desc = row[descriptionIdx] || "";
+                // Extract invoice number using regex (e.g. INV-023233)
+                const match = desc.match(/INV-\d+/);
+                if (!match || !accountName) continue;
+                const invoiceNum = match[0];
                 const debit = parseFloat(row[debitIdx]) || 0;
                 const credit = parseFloat(row[creditIdx]) || 0;
-                
-                if (!invoiceNum || !accountName) continue;
                 
                 // Track harvester invoices to exclude later
                 if (accountName && accountName.toLowerCase().includes('harvester')) {
@@ -781,7 +783,6 @@
                 // Include only Leveling and Other Mechanization
                 if (accountName && (accountName.toLowerCase().includes('leveling') || 
                     accountName.toLowerCase().includes('mechanization'))) {
-                    
                     if (!invoiceMap[invoiceNum]) {
                         invoiceMap[invoiceNum] = { debit: 0, credit: 0 };
                     }
