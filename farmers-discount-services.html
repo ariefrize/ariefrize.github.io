@@ -1155,6 +1155,7 @@
             const modalTitle = document.getElementById('y2s1ModalTitle');
             const modalBody = document.getElementById('y2s1ModalBody');
             modalTitle.textContent = `Y2S1 ${type === 'advisory' ? 'Advisory' : 'Advance'} Details - ${customerName}`;
+            console.log('[DEBUG][Modal] Details array:', details);
             let tableHTML = `
                 <table class="y2s1-detail-table">
                     <thead>
@@ -1178,7 +1179,9 @@
                         </tr>
                     `;
                 });
-            } 
+            } else {
+                tableHTML += `<tr><td colspan="4" style="text-align:center;color:#ef4444;font-weight:600;">No data available</td></tr>`;
+            }
             tableHTML += `
                     </tbody>
                 </table>
@@ -1194,6 +1197,7 @@
             const modalTitle = document.getElementById('modalTitle');
             const modalBody = document.getElementById('modalBody');
             modalTitle.textContent = `Y2S2 Invoices - ${customerName}`;
+            console.log('[DEBUG][Modal] Invoice details array:', invoiceDetails);
             let total = 0;
             let totalDiscount = 0;
             let tableHTML = `
@@ -1226,7 +1230,9 @@
                         </tr>
                     `;
                 });
-            } 
+            } else {
+                tableHTML += `<tr><td colspan="4" style="text-align:center;color:#ef4444;font-weight:600;">No data available</td></tr>`;
+            }
             tableHTML += `
                     </tbody>
                     <tfoot>
