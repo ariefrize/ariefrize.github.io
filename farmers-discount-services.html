@@ -1090,9 +1090,8 @@
             const modal = document.getElementById('invoiceModal');
             const modalTitle = document.getElementById('modalTitle');
             const modalBody = document.getElementById('modalBody');
-            
             modalTitle.textContent = `Y2S2 Invoices - ${customerName}`;
-            
+            let total = 0;
             let tableHTML = `
                 <table class="invoice-detail-table">
                     <thead>
@@ -1100,29 +1099,30 @@
                             <th>Invoice Number</th>
                             <th>Invoice Date</th>
                             <th>Amount</th>
+                            <th>Discount (3%)</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
-            
-            let total = 0;
             invoiceDetails.forEach(inv => {
                 total += inv.amount;
+                const discount = inv.amount * 0.03;
                 tableHTML += `
                     <tr>
                         <td>${inv.invoiceNumber}</td>
                         <td>${formatDate(inv.invoiceDate)}</td>
                         <td>${formatRupiah(inv.amount)}</td>
+                        <td>${formatRupiah(discount)}</td>
                     </tr>
                 `;
             });
-            
             tableHTML += `
                     </tbody>
                     <tfoot>
                         <tr style="border-top: 2px solid #7c3aed;">
                             <td colspan="2" style="font-weight: 700; color: #fafafa;">Total</td>
                             <td style="font-weight: 700, color: #fafafa;">${formatRupiah(total)}</td>
+                            <td style="font-weight: 700; color: #fafafa;">${formatRupiah(total * 0.03)}</td>
                         </tr>
                     </tfoot>
                 </table>
