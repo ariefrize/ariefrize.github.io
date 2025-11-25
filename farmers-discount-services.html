@@ -740,7 +740,7 @@
                     // Process Y2S2 - Calculate discount eligibility
                     const y2s2Groups = processY2S2Data(y2s2Data, glProcessed);
                     // Combine results
-                    summaryData = combineResults(y2s1Groups, y2s2Groups);
+                    summaryData = combineResults(y2s1Groups, y2s2Groups, glProcessed);
                     displayResults();
                 } catch (error) {
                     alert('Error processing files: ' + error.message);
@@ -983,9 +983,10 @@
             return results;
         }
 
-        function combineResults(y2s1Groups, y2s2Groups) {
+        function combineResults(y2s1Groups, y2s2Groups, glProcessed) {
             const allKeys = new Set([...Object.keys(y2s1Groups), ...Object.keys(y2s2Groups)]);
             const combined = [];
+            const { invoiceMap } = glProcessed || {};
             allKeys.forEach(key => {
                 const y2s1 = y2s1Groups[key] || {
                     customerName: '',
@@ -996,33 +997,35 @@
                     zeroOutstanding: false,
                     earlyPayment: false,
                     y2s1Pass: false,
-                    advisoryDetails: [],
-                    advanceDetails: []
+                    invoices: {}
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
                 // Build Y2S1 advisory details
                 const advisoryDetails = [];
-                if (y2s1.invoices) {
-                    Object.entries(y2s1.invoices).forEach(([invNum, inv]) => {
-                        advisoryDetails.push({
-                            invoiceNumber: invNum,
-                            amount: inv.balance || 0,
-                            repayment: 0 // You can add repayment logic if available
-                        });
+                Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
+                    let repayment = 0;
+                    if (invoiceMap && invoiceMap[invNum]) {
+                        repayment = invoiceMap[invNum].credit || 0;
+                    }
+                    advisoryDetails.push({
+                        invoiceNumber: invNum,
+                        amount: inv.balance || 0,
+                        repayment: repayment
                     });
-                }
+                });
                 // Build Y2S1 advance details
                 const advanceDetails = [];
-                if (y2s1.advanceInvoices) {
-                    Object.entries(y2s1.advanceInvoices).forEach(([invNum, adv]) => {
-                        advanceDetails.push({
-                            invoiceNumber: invNum,
-                            amount: adv.amount || 0,
-                            repayment: adv.repayment || 0
-                        });
+                if (invoiceMap) {
+                    Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
+                        if (invoiceMap[invNum]) {
+                            advanceDetails.push({
+                                invoiceNumber: invNum,
+                                amount: invoiceMap[invNum].debit || 0,
+                                repayment: invoiceMap[invNum].credit || 0
+                            });
+                        }
                     });
                 }
-                // Y2S2 invoice details already present
                 combined.push({
                     customerName: y2s1.customerName || key.split('|')[0],
                     salesperson: y2s1.salesperson || key.split('|')[1],
