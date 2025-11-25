@@ -1120,8 +1120,52 @@
             return 'Rp ' + num.toLocaleString('id-ID', { maximumFractionDigits: 0 });
         }
 
+        // Ensure modals are always brought to front and displayed
+        function showY2S1Detail(type, details, customerName) {
+            const modal = document.getElementById('y2s1DetailModal');
+            modal.style.zIndex = 2000;
+            modal.style.display = 'flex';
+            const modalTitle = document.getElementById('y2s1ModalTitle');
+            const modalBody = document.getElementById('y2s1ModalBody');
+            modalTitle.textContent = `Y2S1 ${type === 'advisory' ? 'Advisory' : 'Advance'} Details - ${customerName}`;
+            let tableHTML = `
+                <table class="y2s1-detail-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice Number</th>
+                            <th>Amount</th>
+                            <th>Repayment</th>
+                            <th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            if (details && details.length > 0) {
+                details.forEach(inv => {
+                    tableHTML += `
+                        <tr>
+                            <td>${inv.invoiceNumber || '-'}</td>
+                            <td>${formatRupiah(inv.amount || 0)}</td>
+                            <td>${formatRupiah(inv.repayment || 0)}</td>
+                            <td>${formatRupiah((inv.amount || 0) - (inv.repayment || 0))}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tableHTML += `<tr><td colspan="4" style="text-align:center; color:#a1a1aa;">No data available</td></tr>`;
+            }
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            modalBody.innerHTML = tableHTML;
+            modal.style.display = 'flex';
+        }
+
         function showInvoiceDetail(invoiceDetails, customerName) {
             const modal = document.getElementById('invoiceModal');
+            modal.style.zIndex = 2000;
+            modal.style.display = 'flex';
             const modalTitle = document.getElementById('modalTitle');
             const modalBody = document.getElementById('modalBody');
             modalTitle.textContent = `Y2S2 Invoices - ${customerName}`;
@@ -1176,57 +1220,20 @@
             modal.style.display = 'flex';
         }
 
-        function closeModal() {
-            document.getElementById('invoiceModal').style.display = 'none';
-        }
-
-        function showY2S1Detail(type, details, customerName) {
-            const modal = document.getElementById('y2s1DetailModal');
-            const modalTitle = document.getElementById('y2s1ModalTitle');
-            const modalBody = document.getElementById('y2s1ModalBody');
-            modalTitle.textContent = `Y2S1 ${type === 'advisory' ? 'Advisory' : 'Advance'} Details - ${customerName}`;
-            let tableHTML = `
-                <table class="y2s1-detail-table">
-                    <thead>
-                        <tr>
-                            <th>Invoice Number</th>
-                            <th>Amount</th>
-                            <th>Repayment</th>
-                            <th>Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            if (details && details.length > 0) {
-                details.forEach(inv => {
-                    tableHTML += `
-                        <tr>
-                            <td>${inv.invoiceNumber || '-'}</td>
-                            <td>${formatRupiah(inv.amount || 0)}</td>
-                            <td>${formatRupiah(inv.repayment || 0)}</td>
-                            <td>${formatRupiah((inv.amount || 0) - (inv.repayment || 0))}</td>
-                        </tr>
-                    `;
-                });
-            } else {
-                tableHTML += `<tr><td colspan="4" style="text-align:center; color:#a1a1aa;">No data available</td></tr>`;
-            }
-            tableHTML += `
-                    </tbody>
-                </table>
-            `;
-            modalBody.innerHTML = tableHTML;
-            modal.style.display = 'flex';
-        }
-
         function closeY2S1Modal() {
-            document.getElementById('y2s1DetailModal').style.display = 'none';
+            const modal = document.getElementById('y2s1DetailModal');
+            modal.style.display = 'none';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('invoiceModal');
+            modal.style.display = 'none';
         }
 
         window.onclick = function(event) {
-            const modal = document.getElementById('invoiceModal');
+            const invoiceModal = document.getElementById('invoiceModal');
             const y2s1Modal = document.getElementById('y2s1DetailModal');
-            if (event.target === modal) closeModal();
+            if (event.target === invoiceModal) closeModal();
             if (event.target === y2s1Modal) closeY2S1Modal();
         }
 
