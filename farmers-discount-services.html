@@ -790,7 +790,7 @@
                     invoiceMap[invoiceNum].credit += credit;
                 }
             }
-            
+            console.log('[DEBUG] GL Invoice Numbers:', Object.keys(invoiceMap));
             return { invoiceMap, harvesterInvoices };
         }
 
@@ -819,6 +819,7 @@
                 if (!itemName.includes('advisory') || status === 'Draft' || status === 'Pending' || status === 'Void' || status === 'Approved') {
                     return;
                 }
+                console.log('[DEBUG] Y2S1 Advisory Invoice:', {invoiceNum, customer, salesperson, itemName, status, balance, lastPayment});
                 
                 if (!groups[key]) {
                     groups[key] = {
@@ -881,6 +882,10 @@
                     earlyPayment: earlyPayment,
                     y2s1Pass: zeroOutstanding && earlyPayment
                 };
+            });
+            
+            Object.values(groups).forEach(group => {
+                console.log('[DEBUG] Customer:', group.customerName, 'Advisory Balance:', group.advisoryBalance, 'Advance Outstanding:', group.advanceOutstanding);
             });
             
             return results;
@@ -1114,7 +1119,7 @@
                     <tfoot>
                         <tr style="border-top: 2px solid #7c3aed;">
                             <td colspan="2" style="font-weight: 700; color: #fafafa;">Total</td>
-                            <td style="font-weight: 700; color: #fafafa;">${formatRupiah(total)}</td>
+                            <td style="font-weight: 700, color: #fafafa;">${formatRupiah(total)}</td>
                         </tr>
                     </tfoot>
                 </table>
