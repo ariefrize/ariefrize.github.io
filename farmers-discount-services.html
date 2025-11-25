@@ -1004,12 +1004,13 @@
                 const advisoryDetails = [];
                 Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
                     let repayment = 0;
+                    let advisoryAmount = inv.balance || 0;
                     if (invoiceMap && invoiceMap[invNum]) {
                         repayment = invoiceMap[invNum].credit || 0;
                     }
                     advisoryDetails.push({
                         invoiceNumber: invNum,
-                        amount: inv.balance || 0,
+                        amount: advisoryAmount,
                         repayment: repayment
                     });
                 });
@@ -1026,6 +1027,8 @@
                         }
                     });
                 }
+                // Debug logging to verify details
+                console.log('[DEBUG] Customer:', y2s1.customerName, 'Advisory Details:', advisoryDetails, 'Advance Details:', advanceDetails);
                 combined.push({
                     customerName: y2s1.customerName || key.split('|')[0],
                     salesperson: y2s1.salesperson || key.split('|')[1],
