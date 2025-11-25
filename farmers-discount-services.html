@@ -805,7 +805,7 @@
                 const customer = row['Customer Name'] || 'Unknown';
                 const salesperson = row['Sales person'] || 'Unknown';
                 const key = `${customer}|${salesperson}`;
-                const invoiceNum = row['Invoice Number'];
+                const invoiceNum = (row['Invoice Number'] || '').trim();
                 
                 // Skip harvester-related invoices
                 if (harvesterInvoices.has(invoiceNum)) return;
@@ -911,7 +911,7 @@
                     };
                 }
                 
-                const invoiceNum = row['Invoice Number'];
+                const invoiceNum = (row['Invoice Number'] || '').trim();
                 const itemName = (row['Item Name'] || '').toLowerCase();
                 const status = row['Invoice Status'] || '';
                 const itemPrice = parseFloat(row['Item Price']) || 0;
