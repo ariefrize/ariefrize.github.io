@@ -1021,7 +1021,7 @@
                 });
                 // Y2S2 sales: always use sum of invoiceDetails amounts
                 const y2s2TotalSales = (y2s2.invoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
-                combined.push({
+                const combinedRow = {
                     customerName: y2s1.customerName || key.split('|')[0],
                     salesperson: y2s1.salesperson || key.split('|')[1],
                     advisoryBalance: y2s1.advisoryBalance,
@@ -1037,7 +1037,14 @@
                     thresholdMet: y2s2TotalSales >= 2500000,
                     discountAmount: y2s1.y2s1Pass && y2s2TotalSales >= 2500000 ? y2s2TotalSales * 0.03 : 0,
                     afterDiscount: y2s2TotalSales - (y2s1.y2s1Pass && y2s2TotalSales >= 2500000 ? y2s2TotalSales * 0.03 : 0)
-                });
+                };
+                // Debug: log combined row values so we can trace mismatches
+                try {
+                    console.log('[DEBUG] Combined Row for key:', key, combinedRow);
+                } catch (e) {
+                    console.warn('[DEBUG] Failed to log combinedRow', e);
+                }
+                combined.push(combinedRow);
             });
             combined.sort((a, b) => a.customerName.localeCompare(b.customerName));
             return combined;
