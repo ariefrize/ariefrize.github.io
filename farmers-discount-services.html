@@ -988,10 +988,9 @@
             const combined = [];
             const { invoiceMap } = glProcessed || {};
             allKeys.forEach(key => {
-                const [customerName, salesperson] = key.split('|');
                 const y2s1 = y2s1Groups[key] || {
-                    customerName: customerName,
-                    salesperson: salesperson,
+                    customerName: '',
+                    salesperson: '',
                     advisoryBalance: 0,
                     advanceOutstanding: 0,
                     totalOutstanding: 0,
@@ -1001,36 +1000,40 @@
                     invoices: {}
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
-                // Y2S1 advisory details only from y2s1.invoices
+                // Reference logic for Y2S1 details
                 const advisoryDetails = [];
                 Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
+                    let repayment = 0;
+                    let advisoryAmount = inv.balance || 0;
+                    if (invoiceMap && invoiceMap[invNum]) {
+                        repayment = invoiceMap[invNum].credit || 0;
+                    }
                     advisoryDetails.push({
                         invoiceNumber: invNum,
-                        amount: inv.balance || 0,
-                        repayment: (invoiceMap && invoiceMap[invNum]) ? invoiceMap[invNum].credit || 0 : 0
+                        amount: advisoryAmount,
+                        repayment: repayment
                     });
                 });
-                // Y2S1 advance details only from y2s1.invoices
                 const advanceDetails = [];
-                Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
-                    if (invoiceMap && invoiceMap[invNum]) {
-                        advanceDetails.push({
-                            invoiceNumber: invNum,
-                            amount: invoiceMap[invNum].debit || 0,
-                            repayment: invoiceMap[invNum].credit || 0
-                        });
-                    }
-                });
+                if (invoiceMap) {
+                    Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
+                        if (invoiceMap[invNum]) {
+                            advanceDetails.push({
+                                invoiceNumber: invNum,
+                                amount: invoiceMap[invNum].debit || 0,
+                                repayment: invoiceMap[invNum].credit || 0
+                            });
+                        }
+                    });
+                }
                 // Y2S2 sales: always use sum of invoiceDetails amounts
                 const y2s2TotalSales = (y2s2.invoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
-                // Debug logging to verify details
-                console.log('[DEBUG] Customer:', customerName, 'Advisory Details:', advisoryDetails, 'Advance Details:', advanceDetails);
                 combined.push({
-                    customerName: customerName,
-                    salesperson: salesperson,
-                    advisoryBalance: advisoryDetails.reduce((sum, d) => sum + (d.amount || 0), 0),
-                    advanceOutstanding: advanceDetails.reduce((sum, d) => sum + ((d.amount || 0) - (d.repayment || 0)), 0),
-                    totalOutstanding: advisoryDetails.reduce((sum, d) => sum + (d.amount || 0), 0) + advanceDetails.reduce((sum, d) => sum + ((d.amount || 0) - (d.repayment || 0)), 0),
+                    customerName: y2s1.customerName || key.split('|')[0],
+                    salesperson: y2s1.salesperson || key.split('|')[1],
+                    advisoryBalance: y2s1.advisoryBalance,
+                    advanceOutstanding: y2s1.advanceOutstanding,
+                    totalOutstanding: y2s1.totalOutstanding,
                     y2s1Pass: y2s1.y2s1Pass,
                     y2s2TotalSales: y2s2TotalSales,
                     y2s2InvoiceCount: y2s2.invoices.length,
