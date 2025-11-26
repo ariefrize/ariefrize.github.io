@@ -740,7 +740,7 @@
                     // Process Y2S2 - Calculate discount eligibility
                     const y2s2Groups = processY2S2Data(y2s2Data, glProcessed);
                     // Combine results
-                    summaryData = combineResults(y2s1Groups, y2s2Groups, glProcessed);
+                    summaryData = combineResults(y2s1Groups, y2s2Groups, glProcessed, y2s1Data);
                     displayResults();
                 } catch (error) {
                     alert('Error processing files: ' + error.message);
@@ -983,7 +983,7 @@
             return results;
         }
 
-        function combineResults(y2s1Groups, y2s2Groups, glProcessed) {
+        function combineResults(y2s1Groups, y2s2Groups, glProcessed, y2s1RawData) {
             const allKeys = new Set([...Object.keys(y2s1Groups), ...Object.keys(y2s2Groups)]);
             const combined = [];
             const { invoiceMap } = glProcessed || {};
@@ -1001,30 +1001,35 @@
                     invoices: {}
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
-                // Y2S1 advisory details: only advisory invoices for this customer in Y2S1 period
+                // Build advisory and advance details from raw invoice data for this customer in Y2S1 period
                 const advisoryDetails = [];
-                Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
-                    advisoryDetails.push({
-                        invoiceNumber: invNum,
-                        amount: inv.balance || 0,
-                        repayment: (invoiceMap && invoiceMap[invNum]) ? invoiceMap[invNum].credit || 0 : 0
-                    });
-                });
-                // Y2S1 advance details: all GL advances for this customer in Y2S1 period
                 const advanceDetails = [];
-                if (invoiceMap) {
-                    Object.entries(invoiceMap).forEach(([invNum, gl]) => {
-                        // Only include if advance (debit) exists and invoice belongs to this customer in Y2S1
-                        // Check if invoiceNum is present in y2s1.invoices OR if the customer/salesperson matches
-                        if (gl.debit > 0 && y2s1.invoices && (y2s1.invoices[invNum] || (y2s1.customerName === customerName && y2s1.salesperson === salesperson))) {
-                            advanceDetails.push({
-                                invoiceNumber: invNum,
-                                amount: gl.debit || 0,
-                                repayment: gl.credit || 0
-                            });
-                        }
-                    });
-                }
+                (y2s1RawData || []).forEach(row => {
+                    const invoiceDate = parseDate(row['Invoice Date']);
+                    if (!invoiceDate || invoiceDate < Y2S1_START || invoiceDate > Y2S1_END) return;
+                    if ((row['Customer Name'] || '').trim() !== customerName) return;
+                    if ((row['Sales person'] || '').trim() !== salesperson) return;
+                    const invoiceNum = (row['Invoice Number'] || '').trim();
+                    const itemName = (row['Item Name'] || '').toLowerCase();
+                    const status = row['Invoice Status'] || '';
+                    const balance = parseFloat(row['Balance']) || 0;
+                    // Advisory: only advisory items
+                    if (itemName.includes('advisory') && status !== 'Draft' && status !== 'Pending' && status !== 'Void' && status !== 'Approved') {
+                        advisoryDetails.push({
+                            invoiceNumber: invoiceNum,
+                            amount: balance,
+                            repayment: (invoiceMap && invoiceMap[invoiceNum]) ? invoiceMap[invoiceNum].credit || 0 : 0
+                        });
+                    }
+                    // Advance: any GL debit for this invoice
+                    if (invoiceMap && invoiceMap[invoiceNum] && invoiceMap[invoiceNum].debit > 0) {
+                        advanceDetails.push({
+                            invoiceNumber: invoiceNum,
+                            amount: invoiceMap[invoiceNum].debit || 0,
+                            repayment: invoiceMap[invoiceNum].credit || 0
+                        });
+                    }
+                });
                 // Y2S2 sales: always use sum of invoiceDetails amounts
                 const y2s2TotalSales = (y2s2.invoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
                 // Debug logging to verify details
