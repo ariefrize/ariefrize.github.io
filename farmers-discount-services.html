@@ -1030,7 +1030,7 @@
                         });
                     }
                 });
-                // Y2S2 sales: always use sum of invoiceDetails amounts
+                // Y2S2 sales: always use sum of invoiceDetails amounts (not y2s2.totalAmount)
                 const y2s2TotalSales = (y2s2.invoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
                 // Debug logging to verify details
                 console.log('[DEBUG] Customer:', customerName, 'Advisory Details:', advisoryDetails, 'Advance Details:', advanceDetails);
