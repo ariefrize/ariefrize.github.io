@@ -983,7 +983,7 @@
             return results;
         }
 
-        function combineResults(y2s1Groups, y2s2Groups, glProcessed, y2s1RawData) {
+        function combineResults(y2s1Groups, y2s2Groups, glProcessed) {
             const allKeys = new Set([...Object.keys(y2s1Groups), ...Object.keys(y2s2Groups)]);
             const combined = [];
             const { invoiceMap } = glProcessed || {};
@@ -1001,36 +1001,27 @@
                     invoices: {}
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
-                // Build advisory and advance details from raw invoice data for this customer in Y2S1 period
+                // Restore: Y2S1 advisory details only from y2s1.invoices
                 const advisoryDetails = [];
+                Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
+                    advisoryDetails.push({
+                        invoiceNumber: invNum,
+                        amount: inv.balance || 0,
+                        repayment: (invoiceMap && invoiceMap[invNum]) ? invoiceMap[invNum].credit || 0 : 0
+                    });
+                });
+                // Restore: Y2S1 advance details only from y2s1.invoices
                 const advanceDetails = [];
-                (y2s1RawData || []).forEach(row => {
-                    const invoiceDate = parseDate(row['Invoice Date']);
-                    if (!invoiceDate || invoiceDate < Y2S1_START || invoiceDate > Y2S1_END) return;
-                    if ((row['Customer Name'] || '').trim() !== customerName) return;
-                    if ((row['Sales person'] || '').trim() !== salesperson) return;
-                    const invoiceNum = (row['Invoice Number'] || '').trim();
-                    const itemName = (row['Item Name'] || '').toLowerCase();
-                    const status = row['Invoice Status'] || '';
-                    const balance = parseFloat(row['Balance']) || 0;
-                    // Advisory: only advisory items
-                    if (itemName.includes('advisory') && status !== 'Draft' && status !== 'Pending' && status !== 'Void' && status !== 'Approved') {
-                        advisoryDetails.push({
-                            invoiceNumber: invoiceNum,
-                            amount: balance,
-                            repayment: (invoiceMap && invoiceMap[invoiceNum]) ? invoiceMap[invoiceNum].credit || 0 : 0
-                        });
-                    }
-                    // Advance: any GL debit for this invoice
-                    if (invoiceMap && invoiceMap[invoiceNum] && invoiceMap[invoiceNum].debit > 0) {
+                Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
+                    if (invoiceMap && invoiceMap[invNum]) {
                         advanceDetails.push({
-                            invoiceNumber: invoiceNum,
-                            amount: invoiceMap[invoiceNum].debit || 0,
-                            repayment: invoiceMap[invoiceNum].credit || 0
+                            invoiceNumber: invNum,
+                            amount: invoiceMap[invNum].debit || 0,
+                            repayment: invoiceMap[invNum].credit || 0
                         });
                     }
                 });
-                // Y2S2 sales: always use sum of invoiceDetails amounts (not y2s2.totalAmount)
+                // Y2S2 sales: always use sum of invoiceDetails amounts
                 const y2s2TotalSales = (y2s2.invoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
                 // Debug logging to verify details
                 console.log('[DEBUG] Customer:', customerName, 'Advisory Details:', advisoryDetails, 'Advance Details:', advanceDetails);
@@ -1132,7 +1123,7 @@
                 const invoiceLink = row.y2s2InvoiceCount > 0 
                     ? `<span class="invoice-link" onclick='showInvoiceDetail(${JSON.stringify(row.y2s2InvoiceDetails || [])}, "${row.customerName}")'>${row.y2s2InvoiceCount}</span>`
                     : row.y2s2InvoiceCount;
-                // Fix: Y2S2 total sales uses sum of y2s2InvoiceDetails amounts
+                // Fix: Y2S2 total sales uses sum of y2s2InvoiceDetails amounts ONLY
                 const y2s2TotalSales = (row.y2s2InvoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
                 tr.innerHTML = `
                     <td>${row.customerName}</td>
