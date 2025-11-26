@@ -1010,12 +1010,13 @@
                         repayment: (invoiceMap && invoiceMap[invNum]) ? invoiceMap[invNum].credit || 0 : 0
                     });
                 });
-                // Y2S1 advance details: only advances for this customer in Y2S1 period
+                // Y2S1 advance details: all GL advances for this customer in Y2S1 period
                 const advanceDetails = [];
                 if (invoiceMap) {
                     Object.entries(invoiceMap).forEach(([invNum, gl]) => {
                         // Only include if advance (debit) exists and invoice belongs to this customer in Y2S1
-                        if (gl.debit > 0 && y2s1.invoices && y2s1.invoices[invNum]) {
+                        // Check if invoiceNum is present in y2s1.invoices OR if the customer/salesperson matches
+                        if (gl.debit > 0 && y2s1.invoices && (y2s1.invoices[invNum] || (y2s1.customerName === customerName && y2s1.salesperson === salesperson))) {
                             advanceDetails.push({
                                 invoiceNumber: invNum,
                                 amount: gl.debit || 0,
