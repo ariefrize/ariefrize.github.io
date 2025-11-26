@@ -1001,7 +1001,7 @@
                     invoices: {}
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
-                // Restore: Y2S1 advisory details only from y2s1.invoices
+                // Y2S1 advisory details only from y2s1.invoices
                 const advisoryDetails = [];
                 Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
                     advisoryDetails.push({
@@ -1010,7 +1010,7 @@
                         repayment: (invoiceMap && invoiceMap[invNum]) ? invoiceMap[invNum].credit || 0 : 0
                     });
                 });
-                // Restore: Y2S1 advance details only from y2s1.invoices
+                // Y2S1 advance details only from y2s1.invoices
                 const advanceDetails = [];
                 Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
                     if (invoiceMap && invoiceMap[invNum]) {
