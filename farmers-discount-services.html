@@ -1132,6 +1132,8 @@
                 const invoiceLink = row.y2s2InvoiceCount > 0 
                     ? `<span class="invoice-link" onclick='showInvoiceDetail(${JSON.stringify(row.y2s2InvoiceDetails || [])}, "${row.customerName}")'>${row.y2s2InvoiceCount}</span>`
                     : row.y2s2InvoiceCount;
+                // Fix: Y2S2 total sales uses sum of y2s2InvoiceDetails amounts
+                const y2s2TotalSales = (row.y2s2InvoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
                 tr.innerHTML = `
                     <td>${row.customerName}</td>
                     <td>${row.salesperson}</td>
@@ -1139,7 +1141,7 @@
                     <td>${advisoryLink}</td>
                     <td>${advanceLink}</td>
                     <td style="font-weight: 600; color: ${Math.abs(row.totalOutstanding) < 1 ? '#10b981' : '#ef4444'};">${formatRupiah(row.totalOutstanding)}</td>
-                    <td>${formatRupiah(row.y2s2TotalSales)}</td>
+                    <td>${formatRupiah(y2s2TotalSales)}</td>
                     <td>${invoiceLink}</td>
                     <td style="color: ${row.discountAmount > 0 ? '#10b981' : '#71717a'}; font-weight: 600;">${formatRupiah(row.discountAmount)}</td>
                     <td style="font-weight: 600;">${formatRupiah(row.afterDiscount)}</td>
