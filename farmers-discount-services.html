@@ -1000,7 +1000,7 @@
                     invoices: {}
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
-                // Reference logic for Y2S1 details
+                // Y2S1 pop-up details: use same invoices and GL logic as main table
                 const advisoryDetails = [];
                 Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
                     let repayment = 0;
@@ -1015,17 +1015,15 @@
                     });
                 });
                 const advanceDetails = [];
-                if (invoiceMap) {
-                    Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
-                        if (invoiceMap[invNum]) {
-                            advanceDetails.push({
-                                invoiceNumber: invNum,
-                                amount: invoiceMap[invNum].debit || 0,
-                                repayment: invoiceMap[invNum].credit || 0
-                            });
-                        }
-                    });
-                }
+                Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
+                    if (invoiceMap && invoiceMap[invNum]) {
+                        advanceDetails.push({
+                            invoiceNumber: invNum,
+                            amount: invoiceMap[invNum].debit || 0,
+                            repayment: invoiceMap[invNum].credit || 0
+                        });
+                    }
+                });
                 // Y2S2 sales: always use sum of invoiceDetails amounts
                 const y2s2TotalSales = (y2s2.invoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
                 combined.push({
