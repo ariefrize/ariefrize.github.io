@@ -1000,18 +1000,13 @@
                     invoices: {}
                 };
                 const y2s2 = y2s2Groups[key] || { invoices: [], invoiceDetails: [], totalAmount: 0 };
-                // Y2S1 pop-up details: use same invoices and GL logic as main table
+                // Y2S1 pop-up details: build from y2s1.invoices and invoiceMap
                 const advisoryDetails = [];
                 Object.entries(y2s1.invoices || {}).forEach(([invNum, inv]) => {
-                    let repayment = 0;
-                    let advisoryAmount = inv.balance || 0;
-                    if (invoiceMap && invoiceMap[invNum]) {
-                        repayment = invoiceMap[invNum].credit || 0;
-                    }
                     advisoryDetails.push({
                         invoiceNumber: invNum,
-                        amount: advisoryAmount,
-                        repayment: repayment
+                        amount: inv.balance || 0,
+                        repayment: (invoiceMap && invoiceMap[invNum]) ? invoiceMap[invNum].credit || 0 : 0
                     });
                 });
                 const advanceDetails = [];
