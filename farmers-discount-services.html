@@ -1015,7 +1015,7 @@
                 if (invoiceMap) {
                     Object.entries(invoiceMap).forEach(([invNum, gl]) => {
                         // Only include if advance (debit) exists and invoice belongs to this customer in Y2S1
-                        if (gl.debit > 0 && y2s1.invoices[invNum]) {
+                        if (gl.debit > 0 && y2s1.invoices && y2s1.invoices[invNum]) {
                             advanceDetails.push({
                                 invoiceNumber: invNum,
                                 amount: gl.debit || 0,
