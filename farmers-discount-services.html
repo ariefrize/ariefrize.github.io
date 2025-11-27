@@ -842,7 +842,7 @@
                 if (!itemName.includes('advisory') || excluded.includes(status)) {
                     return;
                 }
-                console.log('[DEBUG] Y2S1 Advisory Invoice:', {invoiceNum, customer, salesperson, itemName, status, balance, lastPayment});
+                // Debug info removed
                 
                 if (!groups[key]) {
                     groups[key] = {
@@ -922,7 +922,7 @@
             
             Object.values(groups).forEach(group => {
                 const invoiceKeys = Object.keys(group.invoices || {});
-                console.log('[DEBUG] Customer:', group.customerName, 'Advisory Balance:', group.advisoryBalance, 'Advance Outstanding:', group.advanceOutstanding, 'InvoiceCount:', invoiceKeys.length, 'Invoices:', invoiceKeys);
+                // Debug info removed
             });
             
             return results;
@@ -976,13 +976,13 @@
                         groups[key].invoiceMap[invoiceNum].advanceAmount += advanceAmount;
                         groups[key].invoiceMap[invoiceNum].amount += fullAmount;
                     }
-                    console.log('[DEBUG] Y2S2 added for key:', key, 'invoice:', invoiceNum, 'advisory:', advisoryAmount, 'advance:', advanceAmount, 'full', fullAmount);
+                    // Debug info removed
                 }
             });
             const results = {};
             Object.entries(groups).forEach(([key, group]) => {
                 const invoiceDetails = Object.values(group.invoiceMap);
-                console.log('[DEBUG] Y2S2 Group:', key, 'InvoicesCount:', invoiceDetails.length, 'Invoices:', invoiceDetails.map(i => i.invoiceNumber));
+                // Debug info removed
                 results[key] = {
                     invoices: invoiceDetails.map(inv => inv.invoiceNumber),
                     invoiceDetails: invoiceDetails,
@@ -1064,10 +1064,9 @@
                 };
                 // Debug: log combined row values so we can trace mismatches
                 try {
-                    console.log('[DEBUG] Combined Row for key:', key, combinedRow);
-                    console.log('[DEBUG] Combined Row arrays:', key, 'advisoryCount:', advisoryDetails.length, 'advisoryInvs:', advisoryDetails.map(a => a.invoiceNumber), 'advanceCount:', advanceDetails.length, 'advanceInvs:', advanceDetails.map(a => a.invoiceNumber), 'y2s2InvCount:', y2s2InvoiceDetails.length, 'y2s2Invs:', y2s2InvoiceDetails.map(i => i.invoiceNumber));
+                    // Combined row debug logs removed
                 } catch (e) {
-                    console.warn('[DEBUG] Failed to log combinedRow', e);
+                    // intentionally left blank - removed debug logging for clean release
                 }
                 combined.push(combinedRow);
             });
@@ -1175,7 +1174,7 @@
                 advisoryLink.textContent = formatRupiah(row.advisoryBalance);
                 advisoryLink.style.cursor = 'pointer';
                 advisoryLink.addEventListener('click', () => {
-                    console.log('[DEBUG][renderTable] Advisory click for', row.customerName, advisoryDetails);
+                    // Advisory click debug removed
                     showY2S1Detail('advisory', advisoryDetails, row.customerName);
                 });
                 tdAdvisory.appendChild(advisoryLink);
@@ -1187,7 +1186,7 @@
                 advanceLinkEl.textContent = formatRupiah(row.advanceOutstanding);
                 advanceLinkEl.style.cursor = 'pointer';
                 advanceLinkEl.addEventListener('click', () => {
-                    console.log('[DEBUG][renderTable] Advance click for', row.customerName, advanceDetails);
+                    // Advance click debug removed
                     showY2S1Detail('advance', advanceDetails, row.customerName);
                 });
                 tdAdvance.appendChild(advanceLinkEl);
@@ -1212,7 +1211,7 @@
                     invoiceLinkEl.textContent = String(row.y2s2InvoiceCount);
                     invoiceLinkEl.style.cursor = 'pointer';
                     invoiceLinkEl.addEventListener('click', () => {
-                        console.log('[DEBUG][renderTable] Invoice click for', row.customerName, row.y2s2InvoiceDetails);
+                        // Invoice click debug removed
                         showInvoiceDetail(row.y2s2InvoiceDetails || [], row.customerName);
                     });
                     tdInvoices.appendChild(invoiceLinkEl);
@@ -1255,7 +1254,7 @@
             const modalTitle = document.getElementById('y2s1ModalTitle');
             const modalBody = document.getElementById('y2s1ModalBody');
             modalTitle.textContent = `Y2S1 ${type === 'advisory' ? 'Advisory' : 'Advance'} Details - ${customerName}`;
-            console.log('[DEBUG][Modal] Details array:', details);
+            // Modal details log removed
             let tableHTML = `
                 <table class="y2s1-detail-table">
                     <thead>
@@ -1297,7 +1296,7 @@
             const modalTitle = document.getElementById('modalTitle');
             const modalBody = document.getElementById('modalBody');
             modalTitle.textContent = `Y2S2 Invoices - ${customerName}`;
-            console.log('[DEBUG][Modal] Invoice details array:', invoiceDetails);
+            // Modal invoice details log removed
             let total = 0;
             let totalDiscount = 0;
             let tableHTML = `

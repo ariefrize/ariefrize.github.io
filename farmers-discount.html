@@ -872,19 +872,52 @@
             
             data.forEach(row => {
                 const tr = document.createElement('tr');
-                const invoiceLink = row.y2s2InvoiceCount > 0 
-                    ? `<span class="invoice-link" onclick='showInvoiceDetail(${JSON.stringify(row.y2s2InvoiceDetails || [])}, "${row.customerName}")'>${row.y2s2InvoiceCount}</span>`
-                    : row.y2s2InvoiceCount;
-                
-                tr.innerHTML = `
-                    <td>${row.customerName}</td>
-                    <td>${row.salesperson}</td>
-                    <td><span class="badge ${row.y2s1Pass ? 'badge-pass' : 'badge-fail'}">${row.y2s1Pass ? 'PASS' : 'FAIL'}</span></td>
-                    <td>${formatRupiah(row.y2s2TotalSales)}</td>
-                    <td>${invoiceLink}</td>
-                    <td style="color: ${row.discountAmount > 0 ? '#10b981' : '#71717a'}; font-weight: 600;">${formatRupiah(row.discountAmount)}</td>
-                    <td style="font-weight: 600;">${formatRupiah(row.afterDiscount)}</td>
-                `;
+
+                const tdCustomer = document.createElement('td');
+                tdCustomer.textContent = row.customerName;
+                tr.appendChild(tdCustomer);
+
+                const tdSales = document.createElement('td');
+                tdSales.textContent = row.salesperson;
+                tr.appendChild(tdSales);
+
+                const tdPass = document.createElement('td');
+                const badge = document.createElement('span');
+                badge.className = 'badge ' + (row.y2s1Pass ? 'badge-pass' : 'badge-fail');
+                badge.textContent = row.y2s1Pass ? 'PASS' : 'FAIL';
+                tdPass.appendChild(badge);
+                tr.appendChild(tdPass);
+
+                const tdTotal = document.createElement('td');
+                tdTotal.textContent = formatRupiah(row.y2s2TotalSales);
+                tr.appendChild(tdTotal);
+
+                const tdInvoices = document.createElement('td');
+                if (row.y2s2InvoiceCount > 0) {
+                    const invoiceLink = document.createElement('span');
+                    invoiceLink.className = 'invoice-link';
+                    invoiceLink.textContent = String(row.y2s2InvoiceCount);
+                    invoiceLink.style.cursor = 'pointer';
+                    invoiceLink.addEventListener('click', () => {
+                        showInvoiceDetail(row.y2s2InvoiceDetails || [], row.customerName);
+                    });
+                    tdInvoices.appendChild(invoiceLink);
+                } else {
+                    tdInvoices.textContent = row.y2s2InvoiceCount;
+                }
+                tr.appendChild(tdInvoices);
+
+                const tdDiscount = document.createElement('td');
+                tdDiscount.style.color = row.discountAmount > 0 ? '#10b981' : '#71717a';
+                tdDiscount.style.fontWeight = '600';
+                tdDiscount.textContent = formatRupiah(row.discountAmount);
+                tr.appendChild(tdDiscount);
+
+                const tdAfter = document.createElement('td');
+                tdAfter.style.fontWeight = '600';
+                tdAfter.textContent = formatRupiah(row.afterDiscount);
+                tr.appendChild(tdAfter);
+
                 tbody.appendChild(tr);
             });
         }
