@@ -792,9 +792,9 @@
                 if (!row || row.length === 0) continue;
                 const accountName = row[accountNameIdx];
                 const desc = row[descriptionIdx] || "";
-                const match = desc.match(/INV-\d+/);
+                const match = desc.match(/INV-\d+/i);
                 if (!match || !accountName) continue;
-                const invoiceNum = match[0].trim();
+                const invoiceNum = match[0].trim().toUpperCase();
                 const debit = parseFloat(row[debitIdx]) || 0;
                 const credit = parseFloat(row[creditIdx]) || 0;
                 const date = parseDate(row[dateIdx]);
@@ -826,18 +826,20 @@
                 const customer = row['Customer Name'] || 'Unknown';
                 const salesperson = row['Sales person'] || 'Unknown';
                 const key = `${customer}|${salesperson}`;
-                const invoiceNum = (row['Invoice Number'] || '').trim();
+                const invoiceNum = (row['Invoice Number'] || '').trim().toUpperCase();
                 
                 // Skip harvester-related invoices
                 if (harvesterInvoices.has(invoiceNum)) return;
                 
                 const itemName = (row['Item Name'] || '').toLowerCase();
-                const status = row['Invoice Status'] || '';
+                const status = (row['Invoice Status'] || '').toLowerCase();
                 const balance = parseFloat(row['Balance']) || 0;
                 const lastPayment = parseDate(row['Last Payment Date']);
                 
                 // Only consider services (advisory) items
-                if (!itemName.includes('advisory') || status === 'Draft' || status === 'Pending' || status === 'Void' || status === 'Approved') {
+                // Exclude service items that are not advisory or have inactive statuses (case-insensitive)
+                const excluded = ['draft', 'pending', 'void', 'cancelled', 'canceled'];
+                if (!itemName.includes('advisory') || excluded.includes(status)) {
                     return;
                 }
                 console.log('[DEBUG] Y2S1 Advisory Invoice:', {invoiceNum, customer, salesperson, itemName, status, balance, lastPayment});
@@ -912,11 +914,15 @@
                     zeroOutstanding: zeroOutstanding,
                     earlyPayment: advisoryEarlyPayment || advanceEarlyPayment,
                     y2s1Pass: y2s1Pass
+                    ,
+                    // Keep the invoice map so combineResults can build details
+                    invoices: group.invoices
                 };
             });
             
             Object.values(groups).forEach(group => {
-                console.log('[DEBUG] Customer:', group.customerName, 'Advisory Balance:', group.advisoryBalance, 'Advance Outstanding:', group.advanceOutstanding);
+                const invoiceKeys = Object.keys(group.invoices || {});
+                console.log('[DEBUG] Customer:', group.customerName, 'Advisory Balance:', group.advisoryBalance, 'Advance Outstanding:', group.advanceOutstanding, 'InvoiceCount:', invoiceKeys.length, 'Invoices:', invoiceKeys);
             });
             
             return results;
@@ -936,15 +942,16 @@
                         totalAmount: 0
                     };
                 }
-                const invoiceNum = (row['Invoice Number'] || '').trim();
+                const invoiceNum = (row['Invoice Number'] || '').trim().toUpperCase();
                 const itemName = (row['Item Name'] || '').toLowerCase();
-                const status = row['Invoice Status'] || '';
+                const status = (row['Invoice Status'] || '').toLowerCase();
                 const itemPrice = parseFloat(row['Item Price']) || 0;
                 const quantity = parseFloat(row['Quantity']) || 0;
                 let advisoryAmount = 0;
                 let advanceAmount = 0;
                 let referenceDate = invoiceDate;
-                if (itemName.includes('advisory') && status !== 'Draft' && status !== 'Pending' && status !== 'Void' && status !== 'Approved') {
+                const excludedY2S2 = ['draft', 'pending', 'void', 'cancelled', 'canceled'];
+                if (itemName.includes('advisory') && !excludedY2S2.includes(status)) {
                     advisoryAmount = itemPrice * quantity;
                 }
                 // Get advance from GL
@@ -952,8 +959,8 @@
                     advanceAmount = invoiceMap[invoiceNum].debit - invoiceMap[invoiceNum].credit;
                     if (invoiceMap[invoiceNum].advanceDate) referenceDate = invoiceMap[invoiceNum].advanceDate;
                 }
-                // Only include if advisory or advance exists
-                if ((advisoryAmount > 0 || advanceAmount > 0) && status !== 'Draft' && status !== 'Pending' && status !== 'Void' && status !== 'Approved') {
+                // Only include if advisory or advance exists and status is not excluded
+                if ((advisoryAmount > 0 || advanceAmount > 0) && !excludedY2S2.includes(status)) {
                     const fullAmount = advisoryAmount + advanceAmount;
                     groups[key].totalAmount += fullAmount;
                     if (!groups[key].invoiceMap[invoiceNum]) {
@@ -969,11 +976,13 @@
                         groups[key].invoiceMap[invoiceNum].advanceAmount += advanceAmount;
                         groups[key].invoiceMap[invoiceNum].amount += fullAmount;
                     }
+                    console.log('[DEBUG] Y2S2 added for key:', key, 'invoice:', invoiceNum, 'advisory:', advisoryAmount, 'advance:', advanceAmount, 'full', fullAmount);
                 }
             });
             const results = {};
             Object.entries(groups).forEach(([key, group]) => {
                 const invoiceDetails = Object.values(group.invoiceMap);
+                console.log('[DEBUG] Y2S2 Group:', key, 'InvoicesCount:', invoiceDetails.length, 'Invoices:', invoiceDetails.map(i => i.invoiceNumber));
                 results[key] = {
                     invoices: invoiceDetails.map(inv => inv.invoiceNumber),
                     invoiceDetails: invoiceDetails,
@@ -1019,8 +1028,23 @@
                         });
                     }
                 });
+                // If we have balances but no per-invoice details, add a summary row so modal shows the amounts
+                if ((advisoryDetails.length === 0 || advanceDetails.length === 0) && (y2s1.advisoryBalance || y2s1.advanceOutstanding)) {
+                    if (advisoryDetails.length === 0 && (y2s1.advisoryBalance || 0) > 0) {
+                        advisoryDetails.push({ invoiceNumber: '-', amount: y2s1.advisoryBalance || 0, repayment: 0 });
+                    }
+                    if (advanceDetails.length === 0 && (y2s1.advanceOutstanding || 0) !== 0) {
+                        advanceDetails.push({ invoiceNumber: '-', amount: y2s1.advanceOutstanding || 0, repayment: 0 });
+                    }
+                }
                 // Y2S2 sales: always use sum of invoiceDetails amounts
-                const y2s2TotalSales = (y2s2.invoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
+                let y2s2InvoiceDetails = y2s2.invoiceDetails || [];
+                // If no detailed invoices were collected but totalAmount exists, provide a summary fallback
+                if (y2s2InvoiceDetails.length === 0 && (y2s2.totalAmount || 0) > 0) {
+                    y2s2InvoiceDetails = [{ invoiceNumber: '-', invoiceDate: null, advisoryAmount: 0, advanceAmount: 0, amount: y2s2.totalAmount }];
+                }
+                const y2s2TotalSales = (y2s2InvoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
+                
                 const combinedRow = {
                     customerName: y2s1.customerName || key.split('|')[0],
                     salesperson: y2s1.salesperson || key.split('|')[1],
@@ -1031,7 +1055,7 @@
                     y2s2TotalSales: y2s2TotalSales,
                     y2s2InvoiceCount: y2s2.invoices.length,
                     y2s2Invoices: y2s2.invoices,
-                    y2s2InvoiceDetails: y2s2.invoiceDetails,
+                    y2s2InvoiceDetails: y2s2InvoiceDetails,
                     y2s1AdvisoryDetails: advisoryDetails,
                     y2s1AdvanceDetails: advanceDetails,
                     thresholdMet: y2s2TotalSales >= 2500000,
@@ -1041,6 +1065,7 @@
                 // Debug: log combined row values so we can trace mismatches
                 try {
                     console.log('[DEBUG] Combined Row for key:', key, combinedRow);
+                    console.log('[DEBUG] Combined Row arrays:', key, 'advisoryCount:', advisoryDetails.length, 'advisoryInvs:', advisoryDetails.map(a => a.invoiceNumber), 'advanceCount:', advanceDetails.length, 'advanceInvs:', advanceDetails.map(a => a.invoiceNumber), 'y2s2InvCount:', y2s2InvoiceDetails.length, 'y2s2Invs:', y2s2InvoiceDetails.map(i => i.invoiceNumber));
                 } catch (e) {
                     console.warn('[DEBUG] Failed to log combinedRow', e);
                 }
@@ -1118,35 +1143,95 @@
             tbody.innerHTML = '';
             data.forEach(row => {
                 const tr = document.createElement('tr');
+
+                const tdCustomer = document.createElement('td');
+                tdCustomer.textContent = row.customerName;
+                tr.appendChild(tdCustomer);
+
+                const tdSales = document.createElement('td');
+                tdSales.textContent = row.salesperson;
+                tr.appendChild(tdSales);
+
+                const tdPass = document.createElement('td');
+                const badge = document.createElement('span');
+                badge.className = 'badge ' + (row.y2s1Pass ? 'badge-pass' : 'badge-fail');
+                badge.textContent = row.y2s1Pass ? 'PASS' : 'FAIL';
+                tdPass.appendChild(badge);
+                tr.appendChild(tdPass);
+
                 // Prepare Y2S1 advisory and advance details
                 let advisoryDetails = row.y2s1AdvisoryDetails || [];
                 let advanceDetails = row.y2s1AdvanceDetails || [];
-                // If details arrays are empty but balances exist, create a fallback summary row so pop-up shows values
                 if ((!advisoryDetails || advisoryDetails.length === 0) && (row.advisoryBalance || 0) > 0) {
                     advisoryDetails = [{ invoiceNumber: '-', amount: row.advisoryBalance || 0, repayment: 0 }];
                 }
                 if ((!advanceDetails || advanceDetails.length === 0) && (row.advanceOutstanding || 0) !== 0) {
                     advanceDetails = [{ invoiceNumber: '-', amount: row.advanceOutstanding || 0, repayment: 0 }];
                 }
-                const advisoryLink = `<span class="invoice-link" onclick='showY2S1Detail("advisory", ${JSON.stringify(advisoryDetails)}, "${row.customerName}")'>${formatRupiah(row.advisoryBalance)}</span>`;
-                const advanceLink = `<span class="invoice-link" onclick='showY2S1Detail("advance", ${JSON.stringify(advanceDetails)}, "${row.customerName}")'>${formatRupiah(row.advanceOutstanding)}</span>`;
-                const invoiceLink = row.y2s2InvoiceCount > 0 
-                    ? `<span class="invoice-link" onclick='showInvoiceDetail(${JSON.stringify(row.y2s2InvoiceDetails || [])}, "${row.customerName}")'>${row.y2s2InvoiceCount}</span>`
-                    : row.y2s2InvoiceCount;
-                // Fix: Y2S2 total sales uses sum of y2s2InvoiceDetails amounts ONLY
+
+                const tdAdvisory = document.createElement('td');
+                const advisoryLink = document.createElement('span');
+                advisoryLink.className = 'invoice-link';
+                advisoryLink.textContent = formatRupiah(row.advisoryBalance);
+                advisoryLink.style.cursor = 'pointer';
+                advisoryLink.addEventListener('click', () => {
+                    console.log('[DEBUG][renderTable] Advisory click for', row.customerName, advisoryDetails);
+                    showY2S1Detail('advisory', advisoryDetails, row.customerName);
+                });
+                tdAdvisory.appendChild(advisoryLink);
+                tr.appendChild(tdAdvisory);
+
+                const tdAdvance = document.createElement('td');
+                const advanceLinkEl = document.createElement('span');
+                advanceLinkEl.className = 'invoice-link';
+                advanceLinkEl.textContent = formatRupiah(row.advanceOutstanding);
+                advanceLinkEl.style.cursor = 'pointer';
+                advanceLinkEl.addEventListener('click', () => {
+                    console.log('[DEBUG][renderTable] Advance click for', row.customerName, advanceDetails);
+                    showY2S1Detail('advance', advanceDetails, row.customerName);
+                });
+                tdAdvance.appendChild(advanceLinkEl);
+                tr.appendChild(tdAdvance);
+
+                const tdTotalOutstanding = document.createElement('td');
+                tdTotalOutstanding.style.fontWeight = '600';
+                tdTotalOutstanding.style.color = Math.abs(row.totalOutstanding) < 1 ? '#10b981' : '#ef4444';
+                tdTotalOutstanding.textContent = formatRupiah(row.totalOutstanding);
+                tr.appendChild(tdTotalOutstanding);
+
+                // Y2S2 total sales uses sum of y2s2InvoiceDetails amounts ONLY
                 const y2s2TotalSales = (row.y2s2InvoiceDetails || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
-                tr.innerHTML = `
-                    <td>${row.customerName}</td>
-                    <td>${row.salesperson}</td>
-                    <td><span class="badge ${row.y2s1Pass ? 'badge-pass' : 'badge-fail'}">${row.y2s1Pass ? 'PASS' : 'FAIL'}</span></td>
-                    <td>${advisoryLink}</td>
-                    <td>${advanceLink}</td>
-                    <td style="font-weight: 600; color: ${Math.abs(row.totalOutstanding) < 1 ? '#10b981' : '#ef4444'};">${formatRupiah(row.totalOutstanding)}</td>
-                    <td>${formatRupiah(y2s2TotalSales)}</td>
-                    <td>${invoiceLink}</td>
-                    <td style="color: ${row.discountAmount > 0 ? '#10b981' : '#71717a'}; font-weight: 600;">${formatRupiah(row.discountAmount)}</td>
-                    <td style="font-weight: 600;">${formatRupiah(row.afterDiscount)}</td>
-                `;
+                const tdY2S2Total = document.createElement('td');
+                tdY2S2Total.textContent = formatRupiah(y2s2TotalSales);
+                tr.appendChild(tdY2S2Total);
+
+                const tdInvoices = document.createElement('td');
+                if (row.y2s2InvoiceCount > 0) {
+                    const invoiceLinkEl = document.createElement('span');
+                    invoiceLinkEl.className = 'invoice-link';
+                    invoiceLinkEl.textContent = String(row.y2s2InvoiceCount);
+                    invoiceLinkEl.style.cursor = 'pointer';
+                    invoiceLinkEl.addEventListener('click', () => {
+                        console.log('[DEBUG][renderTable] Invoice click for', row.customerName, row.y2s2InvoiceDetails);
+                        showInvoiceDetail(row.y2s2InvoiceDetails || [], row.customerName);
+                    });
+                    tdInvoices.appendChild(invoiceLinkEl);
+                } else {
+                    tdInvoices.textContent = row.y2s2InvoiceCount;
+                }
+                tr.appendChild(tdInvoices);
+
+                const tdDiscount = document.createElement('td');
+                tdDiscount.style.color = row.discountAmount > 0 ? '#10b981' : '#71717a';
+                tdDiscount.style.fontWeight = '600';
+                tdDiscount.textContent = formatRupiah(row.discountAmount);
+                tr.appendChild(tdDiscount);
+
+                const tdAfter = document.createElement('td');
+                tdAfter.style.fontWeight = '600';
+                tdAfter.textContent = formatRupiah(row.afterDiscount);
+                tr.appendChild(tdAfter);
+
                 tbody.appendChild(tr);
             });
         }
@@ -1229,10 +1314,8 @@
             `;
             if (invoiceDetails && invoiceDetails.length > 0) {
                 invoiceDetails.forEach(inv => {
-                    let fullAmount = inv.amount;
-                    if (inv.advanceAmount) {
-                        fullAmount += inv.advanceAmount;
-                    }
+                    // inv.amount already contains advisory + advance amounts in processY2S2Data
+                    const fullAmount = inv.amount || ((inv.advisoryAmount || 0) + (inv.advanceAmount || 0));
                     total += fullAmount;
                     const discount = fullAmount * 0.03;
                     totalDiscount += discount;
